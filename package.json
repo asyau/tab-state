@@ -1,0 +1,11 @@
+{
+  "name": "tab-state",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Intent-tracking tab dashboard (Chrome MV3 extension)",
+  "scripts": {
+    "test": "node --test tests/unit/*.test.js",
+    "test:e2e": "node tests/e2e/run.mjs"
+  }
+}

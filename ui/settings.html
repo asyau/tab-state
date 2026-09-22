@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tab State Settings</title>
+  <link rel="icon" href="../icons/icon32.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page">
+    <p><a href="dashboard.html" class="btn subtle small">← Dashboard</a></p>
+    <h1>Settings</h1>
+    <p class="muted">Tab State works with no setup. These options only change how the one-line summaries are written.</p>
+
+    <form id="form" class="panel" autocomplete="off">
+      <h2>Summary provider</h2>
+      <div id="providers"></div>
+      <p id="nano-status" class="note"></p>
+      <div class="row"><button id="enable-nano" type="button" class="btn" hidden>Download on-device model</button></div>
+
+      <fieldset id="openai-fields" class="panel" hidden>
+        <h2>OpenAI-compatible API</h2>
+        <div class="field">
+          <label for="openai-preset">Preset</label>
+          <select id="openai-preset"></select>
+        </div>
+        <div class="field">
+          <label for="openai-base">Base URL</label>
+          <input id="openai-base" type="url" placeholder="https://api.openai.com/v1">
+        </div>
+        <div class="field">
+          <label for="openai-key">API key <span class="muted">(leave empty for Ollama / LM Studio)</span></label>
+          <input id="openai-key" type="password" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="openai-model">Model</label>
+          <input id="openai-model" type="text" placeholder="e.g. gpt-4o-mini, llama3.2, qwen2.5:3b" spellcheck="false">
+        </div>
+        <p class="note">Ollama: start it with <code>OLLAMA_ORIGINS="chrome-extension://*" ollama serve</code> so the extension is allowed to call it.</p>
+      </fieldset>
+
+      <fieldset id="anthropic-fields" class="panel" hidden>
+        <h2>Anthropic API</h2>
+        <div class="field">
+          <label for="anthropic-key">API key</label>
+          <input id="anthropic-key" type="password" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="anthropic-model">Model</label>
+          <input id="anthropic-model" type="text" spellcheck="false">
+        </div>
+      </fieldset>
+
+      <p id="privacy" class="note warn" hidden>
+        With a cloud provider, page titles, descriptions, and your reading stats (not page contents) are sent to that provider.
+        API keys are stored unencrypted in this browser profile.
+      </p>
+
+      <div class="row">
+        <button type="submit" class="btn primary">Save</button>
+        <button id="test" type="button" class="btn">Test with a sample tab</button>
+        <span id="saved" class="muted" hidden>Saved</span>
+      </div>
+      <div id="test-result" class="result"></div>
+    </form>
+
+    <section class="panel">
+      <h2>How tabs are sorted</h2>
+      <table class="rules"><tbody id="rules"></tbody></table>
+    </section>
+
+    <section class="panel">
+      <h2>Your data</h2>
+      <p class="muted">Everything is stored locally in this browser. Closed tabs are forgotten after 7 days.</p>
+      <div class="row"><button id="clear" type="button" class="btn danger">Delete all tracked data</button></div>
+    </section>
+  </div>
+  <script type="module" src="settings.js"></script>
+</body>
+</html>

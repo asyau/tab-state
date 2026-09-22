@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tab State</title>
+  <link rel="icon" href="../icons/icon32.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="../icons/icon48.png" alt="" width="28" height="28">
+      <div>
+        <h1>Tab State</h1>
+        <p id="stats" class="muted">Loading…</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="ai-status" class="pill" title=""></span>
+      <button id="enable-nano" class="btn" hidden>Enable on-device AI</button>
+      <button id="purge" class="btn danger" disabled>Purge Ghost &amp; Glanced</button>
+      <a href="settings.html" class="btn subtle">Settings</a>
+    </div>
+  </header>
+
+  <div id="purge-confirm" class="banner" hidden>
+    <span id="purge-confirm-text"></span>
+    <div class="banner-actions">
+      <button id="purge-go" class="btn danger">Close them</button>
+      <button id="purge-cancel" class="btn subtle">Cancel</button>
+    </div>
+  </div>
+
+  <main id="board" class="board">
+    <section class="col" data-bucket="glanced">
+      <h2><span class="col-emoji">👁️</span> Just Glanced <span class="count"></span></h2>
+      <p class="col-hint">Skipped within seconds</p>
+      <div class="cards"></div>
+    </section>
+    <section class="col" data-bucket="partial">
+      <h2><span class="col-emoji">📖</span> Partially Read <span class="count"></span></h2>
+      <p class="col-hint">Skimmed, not finished</p>
+      <div class="cards"></div>
+    </section>
+    <section class="col col-focus" data-bucket="deep">
+      <h2><span class="col-emoji">🎯</span> Deep Focus <span class="count"></span></h2>
+      <p class="col-hint">Where your real work is</p>
+      <div class="cards"></div>
+    </section>
+    <section class="col" data-bucket="ghost">
+      <h2><span class="col-emoji">👻</span> Ghost Tabs <span class="count"></span></h2>
+      <p class="col-hint">Opened, never looked at</p>
+      <div class="cards"></div>
+    </section>
+  </main>
+
+  <section id="closed" class="closed" hidden>
+    <h2>Recently closed, worth reopening</h2>
+    <div id="closed-list" class="closed-list"></div>
+  </section>
+
+  <div id="toast" class="toast" role="status" hidden>
+    <span id="toast-text"></span>
+    <button id="toast-undo" class="btn">Undo</button>
+  </div>
+
+  <template id="card-tpl">
+    <article class="card">
+      <div class="card-head">
+        <img class="favicon" alt="" width="16" height="16">
+        <button class="title" type="button"></button>
+      </div>
+      <div class="meta muted"></div>
+      <div class="badges"></div>
+      <p class="summary"><span class="summary-text"></span> <span class="source"></span></p>
+      <div class="card-actions">
+        <button class="btn small jump" type="button">Jump to tab</button>
+        <button class="btn small subtle close" type="button">Close</button>
+      </div>
+    </article>
+  </template>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>
