@@ -97,13 +97,26 @@ record gets created in that window (covered by a dedicated regression test).
 ## Testing
 
 ```bash
-npm test                      # unit tests (lib/, ai/) — fake chrome.* APIs, no browser needed
-node tests/e2e/run.mjs        # loads the real extension into Chromium via Playwright
+npm test                        # unit tests (lib/, ai/) — fake chrome.* APIs, no browser needed
+node tests/e2e/run.mjs          # loads the real extension into Chromium via Playwright, asserts behavior
+node tests/e2e/screenshots.mjs  # generates the 1280x800 Chrome Web Store listing screenshots
 ```
 
 The e2e test drives real tabs (scrolling, copying, highlighting, closing, navigating, purging,
-undoing, restarting focus) against a local test server and asserts on the actual dashboard DOM —
-not mocks.
+undoing, restarting focus, notes, thresholds, the daily check-list) against a local test server
+and asserts on the actual dashboard DOM — not mocks. Both scripts need
+`npm i -D playwright && npx playwright install chromium` first.
+
+## Publishing to the Chrome Web Store
+
+- [`PRIVACY.md`](PRIVACY.md) — the privacy policy URL required for submission
+- [`docs/chrome-web-store-submission.md`](docs/chrome-web-store-submission.md) — copy-paste
+  store listing text, the single-purpose declaration, and a justification for every permission
+- [`tests/e2e/output/store/`](tests/e2e/output/store/) — current listing screenshots, regenerate
+  with `node tests/e2e/screenshots.mjs` whenever the UI changes
+
+The $5 one-time developer registration and the actual submission are steps only you can do, at
+the [Developer Dashboard](https://chrome.google.com/webstore/devconsole).
 
 ## Roadmap
 
