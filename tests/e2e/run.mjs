@@ -71,6 +71,11 @@ function watch(page) {
   return page;
 }
 
+async function assertVisibleText(page, selector, text) {
+  const content = await page.locator(selector).textContent();
+  assert.match(content, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), `expected "${selector}" to contain "${text}", got: ${content}`);
+}
+
 async function open(p) {
   const page = watch(await context.newPage());
   await page.goto(BASE + p);
@@ -247,6 +252,77 @@ await sleep(300);
 const overflow = await dash.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 assert.ok(overflow <= 0, `horizontal overflow ${overflow}px`);
 await dash.screenshot({ path: path.join(OUT, 'dashboard-mobile.png'), fullPage: true });
+
+// --- v2: follow-up notes, editable thresholds, daily check-list, recap, grouping -----------------
+
+await dash.setViewportSize({ width: 1360, height: 900 });
+await sleep(300);
+
+// Notes: type one on the recipe card (currently Just Glanced), confirm it flags Follow Up and
+// is excluded from the purge count.
+const purgeCountBefore = await dash.locator('#purge').textContent();
+const recipeCard = dash.locator('.col[data-bucket="glanced"] .card', { hasText: '10 Clickbait Recipes' });
+await recipeCard.locator('.note-toggle').click();
+await recipeCard.locator('.note-input').fill('come back and read the pasta one');
+await dash.locator('#stats').click(); // blur the textarea
+await sleep(1200);
+assert.equal(await dash.locator('#followup').isHidden(), false, 'Follow Up section appears');
+await assertVisibleText(dash, '#followup-list', '10 Clickbait Recipes');
+const purgeCountAfter = await dash.locator('#purge').textContent();
+console.log('purge count before/after note:', purgeCountBefore, '->', purgeCountAfter);
+assert.notEqual(purgeCountBefore, purgeCountAfter, 'noted tab no longer counted as purge-eligible');
+
+// Editable thresholds: dropping glancedMaxMs below the recipe tab's ~6s active time should move
+// it from Just Glanced into Partially Read.
+await settings.bringToFront();
+await settings.fill('#t-glancedMaxMs', '1');
+await settings.click('#thresholds-form button[type="submit"]');
+await sleep(300);
+await dash.bringToFront();
+await sleep(1000);
+assert.equal(await dash.locator('.col[data-bucket="partial"] .card', { hasText: '10 Clickbait Recipes' }).count(), 1,
+  'reclassified into Partially Read after lowering the threshold');
+assert.equal(await dash.locator('.col[data-bucket="glanced"] .card', { hasText: '10 Clickbait Recipes' }).count(), 0);
+
+// Daily check-list: watch the blog tab's domain, confirm it shows checked (it was actively read).
+const blogCard = dash.locator('.card', { hasText: 'Why Rust Async Is Hard' }).first();
+await blogCard.locator('.watch-toggle').click();
+await sleep(1200);
+assert.equal(await dash.locator('#checklist').isHidden(), false, 'check-list strip appears');
+await assertVisibleText(dash, '#checklist-list', 'Why Rust Async Is Hard');
+assert.match(await dash.locator('#checklist-list .pill').first().textContent(), /^✓/, 'checked — was actively read today');
+
+await settings.bringToFront();
+await sleep(400);
+await assertVisibleText(settings, '#watchlist', '127.0.0.1');
+await settings.locator('#watchlist .watchlist-row button').click();
+await sleep(400);
+assert.match(await settings.locator('#watchlist').textContent(), /Nothing on your check-list/);
+await dash.bringToFront();
+await sleep(1200);
+assert.equal(await dash.locator('#checklist').isHidden(), true, 'check-list strip empties out after removal');
+
+// Session recap: a non-empty line summarizing the whole tracked session (template fallback here,
+// since no AI provider actually responds in this environment).
+await sleep(500);
+const recapText = await dash.locator('#recap').textContent();
+console.log('recap:', recapText);
+assert.equal(await dash.locator('#recap').isHidden(), false);
+assert.match(recapText, /Tracked \d+ tabs?/);
+
+// AI grouping: hidden by default; visible once enabled in Settings; clicking surfaces an error
+// toast in this environment (no reachable AI provider) rather than silently doing nothing.
+assert.equal(await dash.locator('#group-tabs').isHidden(), true, 'grouping button hidden by default');
+await settings.bringToFront();
+await settings.check('#grouping-enabled');
+await sleep(300);
+await dash.bringToFront();
+await sleep(1000);
+assert.equal(await dash.locator('#group-tabs').isHidden(), false, 'grouping button appears once enabled');
+await dash.locator('#group-tabs').click();
+await sleep(2000);
+assert.equal(await dash.locator('#toast').isHidden(), false, 'clicking with no working AI provider surfaces feedback, not silence');
+console.log('grouping toast:', await dash.locator('#toast-text').textContent());
 
 // --- Done --------------------------------------------------------------------------------------
 

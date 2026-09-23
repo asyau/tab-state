@@ -83,6 +83,10 @@ const DASHBOARD_ACTIONS = {
   'ts:setAiSummary': (msg) => tracker.setAiSummary(msg),
   'ts:clearAll': () => tracker.clearAll(),
   'ts:refresh': () => tracker.onTick(),
+  'ts:setNote': (msg) => tracker.setNote(msg),
+  'ts:watchAdd': (msg) => tracker.addWatch(msg),
+  'ts:watchRemove': (msg) => tracker.removeWatch(msg),
+  'ts:getWatchlist': () => tracker.getWatchlist(),
 };
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

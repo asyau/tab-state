@@ -111,7 +111,32 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
   border-radius: var(--radius);
   background: var(--danger-soft);
 }
-.banner-actions { display: flex; gap: 8px; }
+.banner.neutral { background: var(--accent-soft); }
+.banner-actions { display: flex; gap: 8px; flex: none; }
+
+/* --- Recap / checklist / follow-up --------------------------------------- */
+
+.recap {
+  margin: 16px 24px 0;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 13.5px;
+}
+
+.checklist { margin: 16px 24px 0; }
+.checklist h2 { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+.checklist-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.followup { padding: 16px 24px 0; }
+.followup h2 { font-size: 14.5px; }
+.followup .col-hint { margin: 2px 0 10px; }
+
+@media (max-width: 640px) {
+  .recap, .checklist { margin-left: 16px; margin-right: 16px; }
+  .followup { padding-left: 16px; padding-right: 16px; }
+}
 
 /* --- Board -------------------------------------------------------------- */
 
@@ -198,7 +223,32 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
   white-space: nowrap;
 }
 .source.basic { background: var(--surface-2); color: var(--muted); }
-.card-actions { display: flex; gap: 6px; }
+
+.note-display {
+  margin: 0 0 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.note-label { display: block; margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.note-input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* --- Closed list -------------------------------------------------------- */
 
@@ -239,6 +289,8 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 .panel h2 { font-size: 15.5px; margin-bottom: 10px; }
 .option { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; cursor: pointer; }
 .option input { margin-top: 3px; }
+.field-row { display: flex; flex-wrap: wrap; gap: 14px; }
+.field-row .field { flex: 1 1 140px; }
 .field { display: grid; gap: 4px; margin: 10px 0; }
 .field label { font-weight: 600; font-size: 13px; }
 .field input, .field select {
@@ -254,7 +306,17 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 .note.warn { background: var(--danger-soft); color: var(--danger); }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
 .result { margin-top: 10px; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
-table.rules { width: 100%; border-collapse: collapse; font-size: 13px; }
-table.rules td { padding: 6px 4px; border-top: 1px solid var(--border); vertical-align: top; }
 fieldset.panel { min-width: 0; margin-left: 0; margin-right: 0; }
+
+.watchlist-manage { display: flex; flex-direction: column; gap: 6px; }
+.watchlist-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 13px;
+}
 code { font-size: 12.5px; }

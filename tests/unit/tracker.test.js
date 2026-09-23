@@ -344,3 +344,61 @@ test('non-web pages are not tracked', async () => {
   await tracker.onFocusMaybeChanged();
   assert.equal((await allRecords()).length, 0);
 });
+
+// --- Follow-up notes ------------------------------------------------------------------------
+
+test('setNote flags a tab as follow-up, and purge refuses it even if asked directly', async () => {
+  const g = env.openTab({ url: 'https://isaac-sim.example.com/', active: false });
+  await tracker.onTabCreated(g);
+  const [rec] = await allRecords();
+  assert.equal(rec.bucket, 'ghost', 'never focused, would normally be purge-eligible');
+
+  await tracker.setNote({ id: rec.id, note: 'want to read and learn this sometime' });
+  const noted = await recordFor('https://isaac-sim.example.com/');
+  assert.equal(noted.note, 'want to read and learn this sometime');
+
+  const { closed } = await tracker.purge([rec.id]); // explicitly asked to purge it anyway
+  assert.equal(closed, 0, 'purge refuses a noted record');
+  const stillOpen = await recordFor('https://isaac-sim.example.com/');
+  assert.ok(stillOpen, 'record was not closed');
+
+  await tracker.setNote({ id: rec.id, note: '' }); // clearing the note lifts the protection
+  const { closed: closedAfterClear } = await tracker.purge([rec.id]);
+  assert.equal(closedAfterClear, 1);
+});
+
+// --- Editable thresholds ---------------------------------------------------------------------
+
+test('a custom threshold saved in settings changes how the tracker classifies', async () => {
+  await env.chrome.storage.local.set({ settings: { thresholds: { glancedMaxMs: 3000 } } });
+  const t = env.openTab({ url: 'https://a.com/', active: true });
+  await tracker.onFocusMaybeChanged();
+  await tracker.onContentMessage({ type: 'ts:ping', url: t.url }, env.tab(t.id)); // ~0s elapsed yet
+  env.advance(4 * S);
+  await tracker.onContentMessage({ type: 'ts:ping', url: t.url }, env.tab(t.id));
+  const r = await recordFor('https://a.com/');
+  // Default glancedMaxMs (15s) would still call 4s "glanced"; the 3s override makes it "partial".
+  assert.equal(r.bucket, 'partial', 'custom threshold applied, not the hardcoded default');
+});
+
+// --- Daily check-list -------------------------------------------------------------------------
+
+test('watchlist add/remove/list', async () => {
+  assert.deepEqual((await tracker.getWatchlist()), []);
+  const { watchlist } = await tracker.addWatch({ domain: 'Gmail.com', label: 'Gmail' });
+  assert.deepEqual(watchlist, [{ domain: 'gmail.com', label: 'Gmail', addedAt: env.now }]);
+  await tracker.addWatch({ domain: 'gmail.com', label: 'duplicate, ignored' });
+  assert.equal((await tracker.getWatchlist()).length, 1, 'adding the same domain twice is a no-op');
+  const { watchlist: afterRemove } = await tracker.removeWatch({ domain: 'gmail.com' });
+  assert.deepEqual(afterRemove, []);
+});
+
+test('isCheckedToday reflects real activity on that domain since local midnight', async () => {
+  const t = env.openTab({ url: 'https://mail.example.com/inbox', active: true });
+  assert.equal(tracker.isCheckedToday('mail.example.com', env.now), false);
+  await tracker.onFocusMaybeChanged();
+  env.advance(5 * S);
+  await tracker.onContentMessage({ type: 'ts:ping', url: t.url }, env.tab(t.id));
+  assert.equal(tracker.isCheckedToday('mail.example.com', env.now), true);
+  assert.equal(tracker.isCheckedToday('other.example.com', env.now), false);
+});

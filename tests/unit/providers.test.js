@@ -1,7 +1,10 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarize, providerChain, sendsDataOffDevice, nanoAvailability } from '../../ai/providers.js';
-import { mergeSettings } from '../../ai/settings.js';
+import {
+  summarize, summarizeSession, providerChain, sendsDataOffDevice, nanoAvailability,
+  proposeGroups, parseGroupsJson,
+} from '../../ai/providers.js';
+import { mergeSettings } from '../../lib/settings.js';
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -96,4 +99,70 @@ test('privacy flag only for cloud providers', () => {
   assert.equal(sendsDataOffDevice(mergeSettings({})), false);
   assert.equal(sendsDataOffDevice(mergeSettings({ provider: 'openai' })), true);
   assert.equal(sendsDataOffDevice(mergeSettings({ provider: 'anthropic' })), true);
+});
+
+// --- Session recap -------------------------------------------------------------------------
+
+const sessionRecords = [
+  { ...record, id: 'a', title: 'Deep one', activeMs: 120_000, maxScrollPct: 90 },
+  { ...record, id: 'b', title: 'Ghost one', url: 'https://y.com/g', activeMs: 0, maxScrollPct: 0 },
+];
+
+test('summarizeSession falls back to the template recap with no AI configured', async () => {
+  const out = await summarizeSession(sessionRecords, mergeSettings({}));
+  assert.equal(out.source, 'template');
+  assert.match(out.text, /Tracked 2 tabs, 1 deep focus, 1 skipped or never opened/);
+});
+
+test('summarizeSession uses the configured provider and a distinct prompt from per-tab', async () => {
+  const calls = mockFetch(() => json(200, { choices: [{ message: { content: 'You focused on Deep one and skipped the rest.' } }] }));
+  const settings = mergeSettings({ provider: 'openai', openai: { apiKey: 'k', model: 'm' } });
+  const out = await summarizeSession(sessionRecords, settings);
+  assert.equal(out.source, 'openai');
+  assert.match(calls[0].body.messages[0].content, /recap of a browsing session/);
+  assert.match(calls[0].body.messages[1].content, /Deep one \(Deep Focus/);
+});
+
+// --- AI grouping ---------------------------------------------------------------------------
+
+test('parseGroupsJson handles plain JSON, a fenced block, and garbage', () => {
+  assert.deepEqual(parseGroupsJson('[{"name":"Docs","indexes":[1,2]}]'), [{ name: 'Docs', indexes: [1, 2] }]);
+  assert.deepEqual(
+    parseGroupsJson('Sure, here you go:\n```json\n[{"name":"Docs","indexes":[1,2]}]\n```'),
+    [{ name: 'Docs', indexes: [1, 2] }],
+  );
+  assert.deepEqual(parseGroupsJson('not json at all'), []);
+  assert.deepEqual(parseGroupsJson('{"name":"not an array"}'), []);
+  assert.deepEqual(parseGroupsJson(undefined), []);
+});
+
+const groupable = [
+  { id: 'r1', title: 'Auth docs', url: 'https://docs.stripe.com/auth' },
+  { id: 'r2', title: 'Webhooks docs', url: 'https://docs.stripe.com/webhooks' },
+  { id: 'r3', title: 'Recipe', url: 'https://food.com/pasta' },
+];
+
+test('proposeGroups maps model indexes back to record ids and drops singleton/invalid groups', async () => {
+  const settings = mergeSettings({ provider: 'openai', openai: { apiKey: 'k', model: 'm' } });
+  mockFetch(() => json(200, { choices: [{ message: {
+    // group 3 references index 3 twice and an out-of-range index 9; group 2 is a lone tab.
+    content: '[{"name":"Stripe Docs","indexes":[1,2]},{"name":"Lonely","indexes":[3,9,3]}]',
+  } }] }));
+  const out = await proposeGroups(groupable, settings);
+  assert.equal(out.groups.length, 1);
+  assert.deepEqual(out.groups[0], { name: 'Stripe Docs', tabIds: ['r1', 'r2'] });
+});
+
+test('proposeGroups refuses to run with only the template available', async () => {
+  const out = await proposeGroups(groupable, mergeSettings({ provider: 'template' }));
+  assert.deepEqual(out.groups, []);
+  assert.match(out.errors[0], /No AI provider configured/);
+});
+
+test('proposeGroups reports a clean error when the model output cannot be parsed', async () => {
+  const settings = mergeSettings({ provider: 'openai', openai: { apiKey: 'k', model: 'm' } });
+  mockFetch(() => json(200, { choices: [{ message: { content: 'I cannot help with that.' } }] }));
+  const out = await proposeGroups(groupable, settings);
+  assert.deepEqual(out.groups, []);
+  assert.match(out.errors[0], /could not be parsed/);
 });

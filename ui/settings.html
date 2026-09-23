@@ -11,7 +11,7 @@
   <div class="page">
     <p><a href="dashboard.html" class="btn subtle small">← Dashboard</a></p>
     <h1>Settings</h1>
-    <p class="muted">Tab State works with no setup. These options only change how the one-line summaries are written.</p>
+    <p class="muted">Tab State works with no setup. These options tune the summary provider, how tabs are sorted, and a couple of optional extras.</p>
 
     <form id="form" class="panel" autocomplete="off">
       <h2>Summary provider</h2>
@@ -65,9 +65,44 @@
       <div id="test-result" class="result"></div>
     </form>
 
-    <section class="panel">
+    <form id="thresholds-form" class="panel" autocomplete="off">
       <h2>How tabs are sorted</h2>
-      <table class="rules"><tbody id="rules"></tbody></table>
+      <p class="muted">All fields in seconds (scroll fields in %). Changes apply immediately.</p>
+      <div class="field-row">
+        <div class="field"><label for="t-ghostMaxMs">👻 Ghost: active for under</label><input id="t-ghostMaxMs" type="number" min="0" step="1"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="t-glancedMaxMs">👁️ Just Glanced: active for under</label><input id="t-glancedMaxMs" type="number" min="0" step="1"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="t-deepMinMs">🎯 Deep Focus: active for at least</label><input id="t-deepMinMs" type="number" min="0" step="1"></div>
+        <div class="field"><label for="t-deepScrollPct">…or scrolled at least (%)</label><input id="t-deepScrollPct" type="number" min="0" max="100" step="1"></div>
+        <div class="field"><label for="t-deepScrollMinMs">…for at least (sec)</label><input id="t-deepScrollMinMs" type="number" min="0" step="1"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="t-partialScrollPct">📖 Partially Read: scrolled at least (%)</label><input id="t-partialScrollPct" type="number" min="0" max="100" step="1"></div>
+        <div class="field"><label for="t-partialScrollMinMs">…for at least (sec)</label><input id="t-partialScrollMinMs" type="number" min="0" step="1"></div>
+      </div>
+      <div class="row">
+        <button type="submit" class="btn primary">Save</button>
+        <button id="thresholds-reset" type="button" class="btn subtle">Reset to defaults</button>
+        <span id="thresholds-saved" class="muted" hidden>Saved</span>
+      </div>
+    </form>
+
+    <section class="panel">
+      <h2>AI-assisted tab grouping</h2>
+      <label class="option">
+        <input id="grouping-enabled" type="checkbox">
+        <span>Show a "Group related tabs" button on the dashboard (uses your summary provider above; off by default)</span>
+      </label>
+      <p class="muted">Tab State's main view always sorts by how you engaged with a page, not what it is — this is an optional extra, never automatic.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Today's check-list</h2>
+      <p class="muted">Sites you want a daily reminder to check. Add one from a tab's card on the dashboard.</p>
+      <div id="watchlist" class="watchlist-manage"></div>
     </section>
 
     <section class="panel">

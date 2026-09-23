@@ -19,10 +19,18 @@
     <div class="topbar-actions">
       <span id="ai-status" class="pill" title=""></span>
       <button id="enable-nano" class="btn" hidden>Enable on-device AI</button>
+      <button id="group-tabs" class="btn" hidden>Group related tabs</button>
       <button id="purge" class="btn danger" disabled>Purge Ghost &amp; Glanced</button>
       <a href="settings.html" class="btn subtle">Settings</a>
     </div>
   </header>
+
+  <p id="recap" class="recap" hidden></p>
+
+  <section id="checklist" class="checklist" hidden>
+    <h2>Today's check-list</h2>
+    <div id="checklist-list" class="checklist-list"></div>
+  </section>
 
   <div id="purge-confirm" class="banner" hidden>
     <span id="purge-confirm-text"></span>
@@ -31,6 +39,20 @@
       <button id="purge-cancel" class="btn subtle">Cancel</button>
     </div>
   </div>
+
+  <div id="group-confirm" class="banner neutral" hidden>
+    <div id="group-confirm-body"></div>
+    <div class="banner-actions">
+      <button id="group-go" class="btn primary">Group them</button>
+      <button id="group-cancel" class="btn subtle">Cancel</button>
+    </div>
+  </div>
+
+  <section id="followup" class="followup" hidden>
+    <h2>📌 Follow Up</h2>
+    <p class="col-hint">Tabs you've asked to not lose — Purge always skips these</p>
+    <div id="followup-list" class="closed-list"></div>
+  </section>
 
   <main id="board" class="board">
     <section class="col" data-bucket="glanced">
@@ -74,8 +96,15 @@
       <div class="meta muted"></div>
       <div class="badges"></div>
       <p class="summary"><span class="summary-text"></span> <span class="source"></span></p>
+      <p class="note-display" hidden></p>
+      <label class="note-label" hidden>
+        Note to self <span class="muted">(flags Follow Up — Purge will always skip this)</span>
+        <textarea class="note-input" rows="2" maxlength="500"></textarea>
+      </label>
       <div class="card-actions">
         <button class="btn small jump" type="button">Jump to tab</button>
+        <button class="btn small subtle note-toggle" type="button">+ Note</button>
+        <button class="btn small subtle watch-toggle" type="button" hidden>👁 Watch daily</button>
         <button class="btn small subtle close" type="button">Close</button>
       </div>
     </article>

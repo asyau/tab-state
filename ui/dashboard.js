@@ -4,8 +4,8 @@ import { formatAgo, formatDuration } from '../lib/format.js';
 import { RECORD_PREFIX } from '../lib/store.js';
 import { summaryFingerprint, templateSummary } from '../lib/template.js';
 import { domainOf } from '../lib/url.js';
-import { loadSettings } from '../ai/settings.js';
-import { PROVIDERS, enableNano, nanoAvailability, summarize } from '../ai/providers.js';
+import { loadSettings } from '../lib/settings.js';
+import { PROVIDERS, enableNano, nanoAvailability, summarize, summarizeSession, proposeGroups } from '../ai/providers.js';
 
 const $ = (sel) => document.querySelector(sel);
 const PURGE_BUCKETS = new Set(['ghost', 'glanced']);
@@ -15,13 +15,16 @@ const CLOSED_LIMIT = 24;
 const state = {
   records: [],
   tabs: new Map(),
+  watchlist: [],
   settings: null,
   nano: 'unsupported',
   aiBusy: false,
   aiError: '',
   purgeIds: [],
   undoIds: [],
-  undoTimer: null,
+  recapFingerprint: '',
+  recapBusy: false,
+  pendingGroups: [],
 };
 
 // --- Data -------------------------------------------------------------------------
@@ -31,6 +34,7 @@ async function loadData() {
   state.records = Object.entries(stored)
     .filter(([key]) => key.startsWith(RECORD_PREFIX))
     .map(([, rec]) => rec);
+  state.watchlist = Array.isArray(stored.watchlist) ? stored.watchlist : [];
   state.tabs = new Map(tabs.map((t) => [t.id, t]));
 }
 
@@ -38,8 +42,12 @@ function isOpen(rec) {
   return !rec.closed && rec.tabId != null && state.tabs.has(rec.tabId);
 }
 
+function thresholds() {
+  return state.settings?.thresholds;
+}
+
 function aiFingerprint(rec, now) {
-  return `${summaryFingerprint(rec, now)}|${state.settings?.provider}`;
+  return `${summaryFingerprint(rec, now, thresholds())}|${state.settings?.provider}`;
 }
 
 /** An AI summary is only shown while it still describes the current state of the tab. */
@@ -47,7 +55,7 @@ function summaryFor(rec, now) {
   if (rec.ai && rec.ai.source !== 'template' && rec.ai.fingerprint === aiFingerprint(rec, now)) {
     return { text: rec.ai.text, source: rec.ai.source };
   }
-  return { text: templateSummary(rec, now), source: 'template' };
+  return { text: templateSummary(rec, now, thresholds()), source: 'template' };
 }
 
 function send(type, payload = {}) {
@@ -55,6 +63,13 @@ function send(type, payload = {}) {
     if (!res?.ok) throw new Error(res?.error || 'No response from background');
     return res.result;
   });
+}
+
+/** True if any tracked record for this domain shows activity since local midnight. */
+function isCheckedToday(domain, now) {
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  return state.records.some((r) => domainOf(r.url) === domain && (r.lastActiveAt || 0) >= start.getTime());
 }
 
 // --- Rendering -----------------------------------------------------------------------
@@ -85,7 +100,7 @@ function sourceLabel(source) {
 function buildCard(rec, now, { closed = false } = {}) {
   const node = $('#card-tpl').content.firstElementChild.cloneNode(true);
   const ms = effectiveActiveMs(rec, now);
-  const bucket = classify(rec, now);
+  const bucket = classify(rec, now, thresholds());
   node.dataset.id = rec.id;
   if (rec.activeSince != null) node.classList.add('active-now');
 
@@ -108,6 +123,7 @@ function buildCard(rec, now, { closed = false } = {}) {
   if (rec.copies) badges.append(badge(`📋 ${rec.copies}`, 'Copied text'));
   if (rec.highlights) badges.append(badge(`🖍 ${rec.highlights}`, 'Highlighted text'));
   if (rec.views > 1) badges.append(badge(`${rec.views} visits`));
+  if (rec.note) badges.append(badge('📌 follow up', 'Purge always skips this tab'));
 
   const summary = summaryFor(rec, now);
   node.querySelector('.summary-text').textContent = summary.text;
@@ -115,8 +131,31 @@ function buildCard(rec, now, { closed = false } = {}) {
   source.textContent = sourceLabel(summary.source);
   if (summary.source === 'template') source.classList.add('basic');
 
+  // --- note editor ---
+  const noteDisplay = node.querySelector('.note-display');
+  const noteLabel = node.querySelector('.note-label');
+  const noteInput = node.querySelector('.note-input');
+  const noteToggle = node.querySelector('.note-toggle');
+  noteInput.value = rec.note || '';
+  noteToggle.textContent = rec.note ? 'Edit note' : '+ Note';
+  if (rec.note) {
+    noteDisplay.textContent = `📌 ${rec.note}`;
+    noteDisplay.hidden = false;
+  }
+  noteToggle.addEventListener('click', () => {
+    const opening = noteLabel.hidden;
+    noteLabel.hidden = !opening;
+    noteDisplay.hidden = opening || !rec.note;
+    if (opening) noteInput.focus();
+  });
+  noteInput.addEventListener('blur', () => {
+    const value = noteInput.value.trim();
+    if (value !== (rec.note || '')) send('ts:setNote', { id: rec.id, note: value }).catch(showError);
+  });
+
   const jump = node.querySelector('.jump');
   const close = node.querySelector('.close');
+  const watchBtn = node.querySelector('.watch-toggle');
   if (closed) {
     jump.textContent = 'Reopen';
     jump.addEventListener('click', () => send('ts:restore', { ids: [rec.id], focus: true }).catch(showError));
@@ -128,6 +167,15 @@ function buildCard(rec, now, { closed = false } = {}) {
     jump.addEventListener('click', goTo);
     title.addEventListener('click', goTo);
     close.addEventListener('click', () => chrome.tabs.remove(rec.tabId).catch(showError));
+
+    const domain = domainOf(rec.url);
+    const watched = state.watchlist.some((w) => w.domain === domain);
+    watchBtn.hidden = false;
+    watchBtn.textContent = watched ? '✓ Watching daily' : '👁 Watch daily';
+    watchBtn.addEventListener('click', () => {
+      const type = watched ? 'ts:watchRemove' : 'ts:watchAdd';
+      send(type, { domain, label: rec.title || domain }).catch(showError);
+    });
   }
   return node;
 }
@@ -140,7 +188,7 @@ function render() {
   const now = Date.now();
   const open = state.records.filter(isOpen);
   const groups = Object.fromEntries(BUCKETS.map((b) => [b, []]));
-  for (const rec of open) groups[classify(rec, now)].push(rec);
+  for (const rec of open) groups[classify(rec, now, thresholds())].push(rec);
 
   for (const bucket of BUCKETS) {
     const col = document.querySelector(`.col[data-bucket="${bucket}"]`);
@@ -157,15 +205,22 @@ function render() {
   }
 
   const closed = state.records
-    .filter((r) => r.closed && r.closedReason !== 'purged' && AI_BUCKETS.has(classify(r, now)))
+    .filter((r) => r.closed && r.closedReason !== 'purged' && !r.note && AI_BUCKETS.has(classify(r, now, thresholds())))
     .sort((a, b) => (b.closedAt || 0) - (a.closedAt || 0))
     .slice(0, CLOSED_LIMIT);
   $('#closed').hidden = closed.length === 0;
   $('#closed-list').replaceChildren(...closed.map((rec) => buildCard(rec, now, { closed: true })));
 
-  // Never purge pinned tabs or the tab being read right now.
+  const noted = state.records.filter((r) => r.note).sort((a, b) => sortKey(b) - sortKey(a));
+  $('#followup').hidden = noted.length === 0;
+  $('#followup-list').replaceChildren(...noted.map((rec) => buildCard(rec, now, { closed: rec.closed })));
+
+  renderChecklist(now);
+
+  // Never purge a noted ("don't lose this"), pinned, or currently-active tab.
   state.purgeIds = open
-    .filter((r) => PURGE_BUCKETS.has(classify(r, now)) && r.activeSince == null && !state.tabs.get(r.tabId)?.pinned)
+    .filter((r) => PURGE_BUCKETS.has(classify(r, now, thresholds())) && r.activeSince == null &&
+      !r.note && !state.tabs.get(r.tabId)?.pinned)
     .map((r) => r.id);
   const purge = $('#purge');
   purge.disabled = state.purgeIds.length === 0;
@@ -176,7 +231,22 @@ function render() {
     ? `${open.length} tracked tab${open.length === 1 ? '' : 's'} · ${deep} in deep focus · ${state.purgeIds.length} safe to close`
     : 'No tracked tabs yet. Browse normally and come back.';
 
+  $('#group-tabs').hidden = !state.settings?.grouping?.enabled;
   renderAiStatus();
+}
+
+function renderChecklist(now) {
+  const box = $('#checklist');
+  if (!state.watchlist.length) { box.hidden = true; return; }
+  box.hidden = false;
+  $('#checklist-list').replaceChildren(...state.watchlist.map((w) => {
+    const checked = isCheckedToday(w.domain, now);
+    const el = document.createElement('span');
+    el.className = `pill${checked ? ' on' : ''}`;
+    el.textContent = `${checked ? '✓' : '○'} ${w.label}`;
+    el.title = checked ? 'Checked today' : 'Not checked yet today';
+    return el;
+  }));
 }
 
 function renderAiStatus() {
@@ -239,7 +309,7 @@ function showError(err) {
 $('#purge').addEventListener('click', () => {
   const n = state.purgeIds.length;
   $('#purge-confirm-text').textContent =
-    `Close ${n} ghost and glanced tab${n === 1 ? '' : 's'}? Pinned tabs are kept. You can undo for ${TIMING.undoWindowMs / 1000}s.`;
+    `Close ${n} ghost and glanced tab${n === 1 ? '' : 's'}? Pinned and noted tabs are kept. You can undo for ${TIMING.undoWindowMs / 1000}s.`;
   $('#purge-confirm').hidden = false;
 });
 
@@ -282,6 +352,65 @@ $('#enable-nano').addEventListener('click', async () => {
   btn.textContent = 'Enable on-device AI';
   render();
   runAiQueue();
+  refreshRecap();
+});
+
+// --- AI-assisted tab grouping (only shown when enabled in Settings) --------------------------
+
+$('#group-tabs').addEventListener('click', async () => {
+  const btn = $('#group-tabs');
+  const candidates = state.records.filter(isOpen);
+  if (candidates.length < 2) { showToast('Need at least 2 open tabs to find groups.'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Thinking…';
+  try {
+    const { groups, errors } = await proposeGroups(candidates, state.settings);
+    if (!groups.length) {
+      showToast(errors[0] || 'No clear groups found among your open tabs.');
+      return;
+    }
+    state.pendingGroups = groups;
+    $('#group-confirm-body').replaceChildren(...groups.map((g) => {
+      const p = document.createElement('p');
+      const strong = document.createElement('strong');
+      strong.textContent = g.name;
+      const names = g.tabIds.map((id) => candidates.find((r) => r.id === id)?.title || id).join(', ');
+      p.append(strong, document.createTextNode(`: ${names}`));
+      return p;
+    }));
+    $('#group-confirm').hidden = false;
+  } catch (err) {
+    showError(err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Group related tabs';
+  }
+});
+
+$('#group-cancel').addEventListener('click', () => {
+  $('#group-confirm').hidden = true;
+  state.pendingGroups = [];
+});
+
+$('#group-go').addEventListener('click', async () => {
+  $('#group-confirm').hidden = true;
+  const groups = state.pendingGroups;
+  state.pendingGroups = [];
+  let applied = 0;
+  for (const g of groups) {
+    const tabIds = g.tabIds
+      .map((id) => state.records.find((r) => r.id === id)?.tabId)
+      .filter((id) => id != null && state.tabs.has(id));
+    if (tabIds.length < 2) continue;
+    try {
+      const groupId = await chrome.tabs.group({ tabIds });
+      await chrome.tabGroups.update(groupId, { title: g.name });
+      applied += 1;
+    } catch (err) {
+      showError(err);
+    }
+  }
+  if (applied) showToast(`Grouped into ${applied} group${applied === 1 ? '' : 's'}.`);
 });
 
 // --- AI summaries (one at a time, only for tabs that matter) --------------------------------
@@ -301,7 +430,7 @@ async function runAiQueue() {
       const now = Date.now();
       const next = state.records.find((r) =>
         (isOpen(r) || r.closed) && r.closedReason !== 'purged' &&
-        AI_BUCKETS.has(classify(r, now)) && r.activeSince == null &&
+        AI_BUCKETS.has(classify(r, now, thresholds())) && r.activeSince == null &&
         r.ai?.fingerprint !== aiFingerprint(r, now));
       if (!next) break;
       const fingerprint = aiFingerprint(next, now);
@@ -320,6 +449,28 @@ async function runAiQueue() {
   }
 }
 
+// --- Session recap (one line, regenerated only when the tracked set materially changes) -----
+
+async function refreshRecap() {
+  const now = Date.now();
+  const open = state.records.filter(isOpen);
+  if (!open.length) { $('#recap').hidden = true; return; }
+  const fp = `${open.map((r) => summaryFingerprint(r, now, thresholds())).sort().join(',')}|${state.settings?.provider}`;
+  if (fp === state.recapFingerprint) { $('#recap').hidden = false; return; }
+  if (state.recapBusy) return;
+  state.recapBusy = true;
+  try {
+    const { text } = await summarizeSession(open, state.settings);
+    state.recapFingerprint = fp;
+    $('#recap').textContent = text;
+    $('#recap').hidden = false;
+  } catch {
+    // Leave whatever recap was showing; not worth surfacing as an error toast.
+  } finally {
+    state.recapBusy = false;
+  }
+}
+
 // --- Live updates -----------------------------------------------------------------------
 
 let refreshTimer = null;
@@ -332,6 +483,7 @@ async function refresh() {
   await loadData();
   render();
   runAiQueue();
+  refreshRecap();
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -340,7 +492,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     loadSettings().then((s) => { state.settings = s; state.aiError = ''; scheduleRefresh(); });
     return;
   }
-  if (Object.keys(changes).some((k) => k.startsWith(RECORD_PREFIX))) scheduleRefresh();
+  if (changes.watchlist || Object.keys(changes).some((k) => k.startsWith(RECORD_PREFIX))) scheduleRefresh();
 });
 chrome.tabs.onRemoved.addListener(scheduleRefresh);
 chrome.tabs.onCreated.addListener(scheduleRefresh);

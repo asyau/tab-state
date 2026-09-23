@@ -1,6 +1,5 @@
 import { THRESHOLDS } from '../lib/config.js';
-import { formatDuration } from '../lib/format.js';
-import { OPENAI_PRESETS, loadSettings, saveSettings } from '../ai/settings.js';
+import { OPENAI_PRESETS, loadSettings, saveSettings } from '../lib/settings.js';
 import { PROVIDERS, enableNano, nanoAvailability, sendsDataOffDevice, summarize } from '../ai/providers.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -26,7 +25,27 @@ const NANO_TEXT = {
   unsupported: 'This browser doesn\'t expose Chrome\'s built-in AI. Summaries fall back to the basic sentence, or add an API below.',
 };
 
+// [settingsKey, inputId, divisor to convert ms->displayed unit; 1 for percent fields]
+const THRESHOLD_FIELDS = [
+  ['ghostMaxMs', 't-ghostMaxMs', 1000],
+  ['glancedMaxMs', 't-glancedMaxMs', 1000],
+  ['deepMinMs', 't-deepMinMs', 1000],
+  ['deepScrollPct', 't-deepScrollPct', 1],
+  ['deepScrollMinMs', 't-deepScrollMinMs', 1000],
+  ['partialScrollPct', 't-partialScrollPct', 1],
+  ['partialScrollMinMs', 't-partialScrollMinMs', 1000],
+];
+
 let settings;
+
+function send(type, payload = {}) {
+  return chrome.runtime.sendMessage({ type, ...payload }).then((res) => {
+    if (!res?.ok) throw new Error(res?.error || 'No response from background');
+    return res.result;
+  });
+}
+
+// --- Provider ------------------------------------------------------------------------------
 
 function renderProviders() {
   const wrap = $('#providers');
@@ -84,25 +103,6 @@ async function renderNano() {
   $('#enable-nano').hidden = status !== 'downloadable';
 }
 
-function renderRules() {
-  const t = THRESHOLDS;
-  const rows = [
-    ['🎯 Deep Focus', `Copied or highlighted text, or ${formatDuration(t.deepMinMs)}+ active, or ${t.deepScrollPct}%+ scrolled with ${formatDuration(t.deepScrollMinMs)}+ active`],
-    ['👻 Ghost', `Active for less than ${formatDuration(t.ghostMaxMs)}`],
-    ['📖 Partially Read', `${formatDuration(t.glancedMaxMs)}+ active, or ${t.partialScrollPct}%+ scrolled with ${formatDuration(t.partialScrollMinMs)}+ active`],
-    ['👁️ Just Glanced', 'Everything else'],
-  ];
-  $('#rules').replaceChildren(...rows.map(([name, rule]) => {
-    const tr = document.createElement('tr');
-    const a = document.createElement('td');
-    const b = document.createElement('td');
-    a.textContent = name;
-    b.textContent = rule;
-    tr.append(a, b);
-    return tr;
-  }));
-}
-
 $('#openai-preset').addEventListener('change', (e) => {
   if (e.target.value) $('#openai-base').value = e.target.value;
 });
@@ -138,6 +138,76 @@ $('#enable-nano').addEventListener('click', async () => {
   renderNano();
 });
 
+// --- Thresholds ------------------------------------------------------------------------------
+
+function fillThresholdFields() {
+  for (const [key, id, div] of THRESHOLD_FIELDS) $(`#${id}`).value = Math.round(settings.thresholds[key] / div);
+}
+
+function readThresholdFields() {
+  const next = {};
+  for (const [key, id, div] of THRESHOLD_FIELDS) {
+    const n = Number($(`#${id}`).value);
+    next[key] = Number.isFinite(n) && n >= 0 ? Math.round(n * div) : THRESHOLDS[key];
+  }
+  return next;
+}
+
+$('#thresholds-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  settings.thresholds = readThresholdFields();
+  await saveSettings(settings);
+  $('#thresholds-saved').hidden = false;
+  setTimeout(() => { $('#thresholds-saved').hidden = true; }, 2000);
+});
+
+$('#thresholds-reset').addEventListener('click', async () => {
+  settings.thresholds = { ...THRESHOLDS };
+  fillThresholdFields();
+  await saveSettings(settings);
+});
+
+// --- AI-assisted tab grouping (instant-apply toggle) ------------------------------------------
+
+$('#grouping-enabled').addEventListener('change', async (e) => {
+  settings.grouping = { enabled: e.target.checked };
+  await saveSettings(settings);
+});
+
+// --- Daily check-list management --------------------------------------------------------------
+
+async function renderWatchlist() {
+  const box = $('#watchlist');
+  let list;
+  try {
+    list = await send('ts:getWatchlist');
+  } catch {
+    list = [];
+  }
+  if (!list.length) {
+    box.textContent = 'Nothing on your check-list yet.';
+    return;
+  }
+  box.replaceChildren(...list.map((w) => {
+    const row = document.createElement('div');
+    row.className = 'watchlist-row';
+    const label = document.createElement('span');
+    label.textContent = `${w.label} (${w.domain})`;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'btn small subtle';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', async () => {
+      await send('ts:watchRemove', { domain: w.domain });
+      renderWatchlist();
+    });
+    row.append(label, remove);
+    return row;
+  }));
+}
+
+// --- Data ------------------------------------------------------------------------------------
+
 $('#clear').addEventListener('click', async () => {
   if (!confirm('Delete all tracked tab data? Open tabs stay open.')) return;
   await chrome.runtime.sendMessage({ type: 'ts:clearAll' });
@@ -150,6 +220,14 @@ $('#clear').addEventListener('click', async () => {
   renderProviders();
   fillFields();
   syncVisibility();
-  renderRules();
+  fillThresholdFields();
+  $('#grouping-enabled').checked = !!settings.grouping?.enabled;
   renderNano();
+  renderWatchlist();
 })();
+
+// Keep the watchlist panel live if it's changed elsewhere (e.g. a "Watch daily" click on the
+// dashboard while this Settings page is already open).
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.watchlist) renderWatchlist();
+});
