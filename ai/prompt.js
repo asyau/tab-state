@@ -6,11 +6,14 @@ import { domainOf } from '../lib/url.js';
 
 export const SYSTEM_PROMPT = [
   'You write one-line reading-state notes for a browser tab dashboard.',
-  'Given a web page and how the user engaged with it, write ONE sentence (max 22 words),',
+  'Given a web page and how the user engaged with it, write ONE sentence (max 24 words),',
   'in second person, saying what the user was doing on the page and where they stopped.',
+  'Briefly name what the page is actually about (a few words, from its title/description) so the',
+  'sentence gives context even for a tab the user barely looked at — this matters most for low',
+  'engagement, since "you opened it for 2 seconds" alone says nothing about what the tab was.',
   'If the user left their own note about why the page matters, weave its intent in naturally',
   'instead of quoting it verbatim.',
-  'Do not summarize the whole page. Do not invent details that are not in the input.',
+  "Do not summarize the page's full content or argument. Do not invent details not in the input.",
   'No preamble, no quotes, no markdown. Output only the sentence.',
 ].join(' ');
 

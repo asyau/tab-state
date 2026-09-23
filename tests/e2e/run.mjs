@@ -226,7 +226,7 @@ await settings.click('#test');
 await settings.waitForFunction(() => !document.querySelector('#test-result').textContent.startsWith('Testing'));
 const testResult = await settings.locator('#test-result').textContent();
 console.log('settings test:', testResult);
-assert.match(testResult, /Result \(template\): Spent 2m 14s reading 88% of the page, copied a snippet, and stopped at a code block in “Authentication”\./);
+assert.match(testResult, /Result \(template\): The Stripe API uses API keys to authenticate requests\. — Spent 2m 14s reading 88% of the page, copied a snippet, and stopped at a code block in “Authentication”\./);
 await settings.check('input[value="openai"]');
 assert.equal(await settings.locator('#openai-fields').isVisible(), true);
 assert.equal(await settings.locator('#privacy').isVisible(), true);

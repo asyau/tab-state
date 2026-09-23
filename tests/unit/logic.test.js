@@ -66,6 +66,21 @@ test('template summaries read naturally', () => {
   assert.equal(templateSummary(rec({ activeMs: 100 * S, maxScrollPct: 50 })), 'Spent 1m 40s reading 50% of the page.');
 });
 
+test('templateSummary prefixes the page topic when a meta description is present', () => {
+  // A ghost tab tells you nothing useful without this — "opened it for 2s" alone has no context.
+  const ghost = rec({ description: 'A physics-based robotics simulator for training and testing AI models.' });
+  assert.equal(
+    templateSummary(ghost),
+    'A physics-based robotics simulator for training and testing AI models. — Opened in the background, never viewed.',
+  );
+  // No description: behaves exactly as before, no dangling separator.
+  assert.equal(templateSummary(rec({ activeMs: 5 * S, maxScrollPct: 8 })), 'Skipped after 5s, only saw the top 8%.');
+  // Long descriptions are truncated, same as everywhere else in the app.
+  const long = rec({ description: 'x'.repeat(200) });
+  const summary = templateSummary(long);
+  assert.ok(summary.startsWith('x'.repeat(99) + '…'), summary);
+});
+
 test('describeAnchor handles missing data', () => {
   assert.equal(describeAnchor(null), '');
   assert.equal(describeAnchor({ kind: 'text', heading: '', snippet: '' }), '');
