@@ -40,12 +40,26 @@ export function buildUserPrompt(r, now = Date.now(), thresholds) {
   return lines.join('\n');
 }
 
-/** Models sometimes add quotes, prefixes or extra lines; keep one clean sentence. */
-export function cleanOutput(text) {
+// --- Deeper per-tab insight (card detail view, on demand) ------------------------------------
+
+export const INSIGHT_SYSTEM_PROMPT = [
+  'You write a short insight paragraph for a browser tab dashboard\'s detail view.',
+  'Given a web page and how the user engaged with it, write 2-4 sentences (max 70 words total),',
+  'in second person: what the page is about, what the user actually did on it, and where they',
+  'stopped or what they saved (copied/highlighted text, a note). Be specific using only the',
+  'input given.',
+  'If the user left their own note, weave its intent in naturally instead of quoting it verbatim.',
+  "Do not summarize the page's full content or argument beyond what's in the input.",
+  'Do not invent details that are not in the input.',
+  'No preamble, no quotes, no markdown, no bullet points. Output only the paragraph.',
+].join(' ');
+
+/** Models sometimes add quotes, prefixes or extra lines; keep one clean sentence (or paragraph). */
+export function cleanOutput(text, maxLen = 220) {
   if (typeof text !== 'string') return '';
   let s = text.trim().split('\n').map((l) => l.trim()).find(Boolean) || '';
-  s = s.replace(/^(summary|note|sentence)\s*:\s*/i, '').replace(/^["'“”`]+|["'“”`]+$/g, '').trim();
-  return truncate(s, 220);
+  s = s.replace(/^(summary|note|sentence|insight)\s*:\s*/i, '').replace(/^["'“”`]+|["'“”`]+$/g, '').trim();
+  return truncate(s, maxLen);
 }
 
 // --- Session recap ------------------------------------------------------------------

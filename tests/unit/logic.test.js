@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { classify, effectiveActiveMs } from '../../lib/classifier.js';
 import { normalizeUrl, isTrackable, domainOf } from '../../lib/url.js';
 import { formatDuration } from '../../lib/format.js';
-import { templateSummary, describeAnchor, summaryFingerprint } from '../../lib/template.js';
+import { templateSummary, templateInsight, describeAnchor, summaryFingerprint } from '../../lib/template.js';
 import { buildUserPrompt, cleanOutput } from '../../ai/prompt.js';
 
 const rec = (over = {}) => ({
@@ -79,6 +79,20 @@ test('templateSummary prefixes the page topic when a meta description is present
   const long = rec({ description: 'x'.repeat(200) });
   const summary = templateSummary(long);
   assert.ok(summary.startsWith('x'.repeat(99) + '…'), summary);
+});
+
+test('templateInsight adds the selection and note as extra sentences', () => {
+  const bare = rec({ activeMs: 5 * S, maxScrollPct: 8 });
+  assert.equal(templateInsight(bare), templateSummary(bare), 'no selection/note: same as the one-liner');
+
+  const rich = rec({
+    activeMs: 5 * S, maxScrollPct: 8,
+    selectionSnippet: 'curl -u sk_test_123', note: 'reread before the interview',
+  });
+  const insight = templateInsight(rich);
+  assert.ok(insight.startsWith(templateSummary(rich)), insight);
+  assert.match(insight, /The last thing you selected: “curl -u sk_test_123”\./);
+  assert.match(insight, /Your note: “reread before the interview”\./);
 });
 
 test('describeAnchor handles missing data', () => {

@@ -126,6 +126,14 @@ console.log('saved 2-purge-confirm.png');
 await dash.click('#purge-cancel');
 await sleep(300);
 
+// Card detail view: click-to-expand, AI insight, and the (non-screenshot) preview.
+await dash.locator('.col[data-bucket="deep"] .card', { hasText: 'Authentication' }).locator('.favicon').click();
+await sleep(500);
+await dash.screenshot({ path: path.join(OUT, '4-detail.png') });
+console.log('saved 4-detail.png');
+await dash.keyboard.press('Escape');
+await sleep(300);
+
 const settings = await context.newPage();
 await settings.setViewportSize(SIZE);
 await settings.goto(`chrome-extension://${extId}/ui/settings.html`);

@@ -1,7 +1,7 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  summarize, summarizeSession, providerChain, sendsDataOffDevice, nanoAvailability,
+  summarize, summarizeSession, getInsight, providerChain, sendsDataOffDevice, nanoAvailability,
   proposeGroups, parseGroupsJson,
 } from '../../ai/providers.js';
 import { mergeSettings } from '../../lib/settings.js';
@@ -121,6 +121,24 @@ test('summarizeSession uses the configured provider and a distinct prompt from p
   assert.equal(out.source, 'openai');
   assert.match(calls[0].body.messages[0].content, /recap of a browsing session/);
   assert.match(calls[0].body.messages[1].content, /Deep one \(Deep Focus/);
+});
+
+// --- Card detail view: deeper AI insight ---------------------------------------------------
+
+test('getInsight falls back to the multi-sentence template with no AI configured', async () => {
+  const out = await getInsight(record, mergeSettings({}));
+  assert.equal(out.source, 'template');
+  assert.match(out.text, /^Spent 2m reading 80%/);
+});
+
+test('getInsight is not truncated at the short one-line summary length', async () => {
+  const longInsight = 'You explored the Stripe authentication guide in real depth, spending well over two minutes on the page. '
+    + 'You scrolled almost to the end and copied a code sample, suggesting you meant to use it directly in your own project soon.';
+  mockFetch(() => json(200, { choices: [{ message: { content: longInsight } }] }));
+  const settings = mergeSettings({ provider: 'openai', openai: { apiKey: 'k', model: 'm' } });
+  const out = await getInsight(record, settings);
+  assert.equal(out.source, 'openai');
+  assert.equal(out.text, longInsight, 'a >220-char insight is not cut short like a per-tab summary');
 });
 
 // --- AI grouping ---------------------------------------------------------------------------

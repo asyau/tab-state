@@ -7,11 +7,12 @@
 // Runs in extension pages (dashboard / settings), not the service worker: Chrome's built-in
 // model is only exposed to window contexts, and downloading it needs a user click.
 
-import { templateSessionSummary, templateSummary } from '../lib/template.js';
+import { templateInsight, templateSessionSummary, templateSummary } from '../lib/template.js';
 import {
   SYSTEM_PROMPT, buildUserPrompt, cleanOutput,
   SESSION_SYSTEM_PROMPT, buildSessionPrompt,
   GROUPING_SYSTEM_PROMPT, buildGroupingPrompt,
+  INSIGHT_SYSTEM_PROMPT,
 } from './prompt.js';
 
 const REQUEST_TIMEOUT_MS = 25_000;
@@ -171,12 +172,12 @@ export function providerChain(settings) {
 }
 
 /** Try the configured provider chain with a given prompt pair. 'template' entries call `fallback`. */
-async function runChain(chain, systemPrompt, userPrompt, settings, fallback) {
+async function runChain(chain, systemPrompt, userPrompt, settings, fallback, maxLen = 220) {
   const errors = [];
   for (const id of chain) {
     if (id === 'template') return { text: fallback(), source: 'template', errors };
     try {
-      const text = cleanOutput(await PROVIDERS[id].run(systemPrompt, userPrompt, settings));
+      const text = cleanOutput(await PROVIDERS[id].run(systemPrompt, userPrompt, settings), maxLen);
       if (text) return { text, source: id, errors };
       errors.push(`${id}: empty response`);
     } catch (err) {
@@ -208,6 +209,19 @@ export function summarizeSession(records, settings) {
     buildSessionPrompt(records, now, thresholds),
     settings,
     () => templateSessionSummary(records, now, thresholds),
+  );
+}
+
+/** A fuller, on-demand 2-4 sentence insight for the card detail view. Never throws. */
+export function getInsight(record, settings) {
+  const thresholds = settings.thresholds;
+  return runChain(
+    providerChain(settings),
+    INSIGHT_SYSTEM_PROMPT,
+    buildUserPrompt(record, Date.now(), thresholds),
+    settings,
+    () => templateInsight(record, Date.now(), thresholds),
+    500,
   );
 }
 

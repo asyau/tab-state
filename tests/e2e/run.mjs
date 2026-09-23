@@ -324,6 +324,61 @@ await sleep(2000);
 assert.equal(await dash.locator('#toast').isHidden(), false, 'clicking with no working AI provider surfaces feedback, not silence');
 console.log('grouping toast:', await dash.locator('#toast-text').textContent());
 
+// --- Card detail view: click-to-expand, AI insight, jump/close ------------------------------
+
+const docsCard = dash.locator('.col[data-bucket="deep"] .card', { hasText: 'Auth API Reference' });
+await docsCard.locator('.favicon').click();
+await sleep(400);
+assert.equal(await dash.locator('#detail-modal').isHidden(), false, 'modal opens on favicon click');
+assert.equal(await dash.locator('#detail-title').textContent(), 'Auth API Reference');
+await assertVisibleText(dash, '#detail-meta', '127.0.0.1');
+await assertVisibleText(dash, '#detail-meta', 'Deep Focus');
+await assertVisibleText(dash, '#detail-url', '/docs');
+assert.equal(await dash.locator('#detail-badges .badge').count() >= 2, true, 'engagement badges shown');
+assert.equal(await dash.locator('#detail-anchor-section').isHidden(), false, 'anchor section shown for a deep-focus tab');
+// Note: docs was closed+reopened earlier in this script, which reloads the page and resets
+// scroll to top — so the anchor now legitimately reflects the top of the page, not
+// "Authentication" any more. The exact wording isn't the point here; that it renders is.
+const anchorText = await dash.locator('#detail-anchor').textContent();
+assert.ok(anchorText.length > 0, 'anchor text renders in the detail view');
+const insightBefore = await dash.locator('#detail-insight').textContent();
+assert.ok(insightBefore.length > 0, 'insight pre-filled from the cached summary');
+
+// Deeper insight: falls back to the template (no working AI provider here), but must actually change state, not silently no-op.
+await dash.locator('#detail-insight-btn').click();
+await dash.waitForFunction(() => document.querySelector('#detail-insight-btn').textContent === 'Get a deeper AI insight');
+const insightAfter = await dash.locator('#detail-insight').textContent();
+console.log('deeper insight:', insightAfter);
+assert.ok(insightAfter.length > insightBefore.length, 'deeper insight is fuller than the one-line summary');
+
+// Escape closes it.
+await dash.keyboard.press('Escape');
+await sleep(200);
+assert.equal(await dash.locator('#detail-modal').isHidden(), true, 'Escape closes the modal');
+
+// Jump-to-tab from the modal actually switches tabs (not just closes the modal).
+await docsCard.locator('.meta').click();
+await sleep(300);
+await dash.locator('#detail-jump').click();
+await sleep(500);
+const activeAfterJump = await bg(async () => (await chrome.tabs.query({ active: true }))[0]?.url);
+assert.match(activeAfterJump, /\/docs$/, 'Jump to tab from the detail view actually focused that tab');
+await dash.bringToFront();
+assert.equal(await dash.locator('#detail-modal').isHidden(), true, 'modal closes itself after acting');
+
+// A closed tab's modal offers Reopen/Dismiss instead of Jump/Close.
+// (blog/"Why Rust Async Is Hard" is Partially Read at this point — close it so #closed is populated.)
+await blog.close();
+await sleep(1000);
+assert.equal(await dash.locator('#closed .card').count(), 1, 'closing a Partially-Read tab lists it under Recently closed');
+await dash.locator('#closed .card').first().locator('.favicon').click();
+await sleep(300);
+assert.equal(await dash.locator('#detail-jump').textContent(), 'Reopen');
+assert.equal(await dash.locator('#detail-close-tab').textContent(), 'Dismiss');
+await dash.locator('#detail-backdrop').click({ position: { x: 5, y: 5 } });
+await sleep(200);
+assert.equal(await dash.locator('#detail-modal').isHidden(), true, 'clicking the backdrop closes it too');
+
 // --- Done --------------------------------------------------------------------------------------
 
 const relevant = errors.filter((e) => !/favicon|ERR_CONNECTION_REFUSED|11434/.test(e));

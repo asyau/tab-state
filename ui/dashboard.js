@@ -1,11 +1,13 @@
 import { classify, effectiveActiveMs } from '../lib/classifier.js';
-import { BUCKETS, TIMING } from '../lib/config.js';
-import { formatAgo, formatDuration } from '../lib/format.js';
+import { BUCKETS, BUCKET_META, TIMING } from '../lib/config.js';
+import { formatAgo, formatDuration, truncate } from '../lib/format.js';
 import { RECORD_PREFIX } from '../lib/store.js';
-import { summaryFingerprint, templateSummary } from '../lib/template.js';
+import { summaryFingerprint, templateSummary, describeAnchor } from '../lib/template.js';
 import { domainOf } from '../lib/url.js';
 import { loadSettings } from '../lib/settings.js';
-import { PROVIDERS, enableNano, nanoAvailability, summarize, summarizeSession, proposeGroups } from '../ai/providers.js';
+import {
+  PROVIDERS, enableNano, nanoAvailability, summarize, summarizeSession, proposeGroups, getInsight,
+} from '../ai/providers.js';
 
 const $ = (sel) => document.querySelector(sel);
 const PURGE_BUCKETS = new Set(['ghost', 'glanced']);
@@ -104,7 +106,10 @@ function buildCard(rec, now, { closed = false } = {}) {
   node.dataset.id = rec.id;
   if (rec.activeSince != null) node.classList.add('active-now');
 
-  node.querySelector('.favicon').src = faviconUrl(rec.url);
+  const favicon = node.querySelector('.favicon');
+  favicon.src = faviconUrl(rec.url);
+  favicon.title = 'View details';
+  favicon.addEventListener('click', () => openDetail(rec, { closed }));
   const title = node.querySelector('.title');
   title.textContent = rec.title || rec.url;
   title.title = rec.url;
@@ -112,7 +117,10 @@ function buildCard(rec, now, { closed = false } = {}) {
   const when = closed
     ? `closed ${formatAgo(rec.closedAt, now)}`
     : rec.lastActiveAt ? `active ${formatAgo(rec.lastActiveAt, now)}` : `opened ${formatAgo(rec.createdAt, now)}`;
-  node.querySelector('.meta').textContent = `${domainOf(rec.url)} · ${when}`;
+  const meta = node.querySelector('.meta');
+  meta.textContent = `${domainOf(rec.url)} · ${when}`;
+  meta.title = 'View details';
+  meta.addEventListener('click', () => openDetail(rec, { closed }));
 
   const badges = node.querySelector('.badges');
   if (bucket === 'ghost') badges.append(badge('never opened'));
@@ -305,6 +313,106 @@ function showError(err) {
   console.warn('[tab-state]', err);
   showToast(`Something went wrong: ${err?.message || err}`);
 }
+
+// --- Card detail view: everything tracked about one tab, plus an on-demand deeper AI insight ---
+// "Preview" here is a large favicon + title + domain + URL, not a literal screenshot of the page:
+// a real page capture could show inbox contents, private dashboards, anything on screen, which
+// conflicts with never capturing page content — the whole point of how this extension works.
+
+let detailRec = null;
+let detailClosed = false;
+
+function showSection(sectionId, textId, text) {
+  const has = !!text;
+  $(`#${sectionId}`).hidden = !has;
+  if (has) $(`#${textId}`).textContent = text;
+}
+
+function openDetail(rec, { closed }) {
+  detailRec = rec;
+  detailClosed = closed;
+  const now = Date.now();
+
+  $('#detail-favicon').src = faviconUrl(rec.url);
+  $('#detail-title').textContent = rec.title || rec.url;
+  const bucket = classify(rec, now, thresholds());
+  const when = closed
+    ? `closed ${formatAgo(rec.closedAt, now)}`
+    : rec.lastActiveAt ? `active ${formatAgo(rec.lastActiveAt, now)}` : `opened ${formatAgo(rec.createdAt, now)}`;
+  $('#detail-meta').textContent = `${domainOf(rec.url)} · ${BUCKET_META[bucket]?.label || bucket} · ${when}`;
+  $('#detail-url').textContent = rec.url;
+
+  const ms = effectiveActiveMs(rec, now);
+  const badges = $('#detail-badges');
+  badges.replaceChildren();
+  if (bucket === 'ghost') badges.append(badge('never opened'));
+  else {
+    badges.append(badge(`⏱ ${formatDuration(ms)}`, 'Active reading time'));
+    badges.append(badge(`↓ ${Math.round(rec.maxScrollPct || 0)}%`, 'Furthest scroll depth'));
+  }
+  if (rec.copies) badges.append(badge(`📋 ${rec.copies}`, 'Copied text'));
+  if (rec.highlights) badges.append(badge(`🖍 ${rec.highlights}`, 'Highlighted text'));
+  if (rec.views > 1) badges.append(badge(`${rec.views} visits`));
+
+  $('#detail-insight').textContent = summaryFor(rec, now).text;
+  $('#detail-insight-btn').disabled = false;
+  $('#detail-insight-btn').textContent = 'Get a deeper AI insight';
+
+  const anchorText = describeAnchor(rec.anchor);
+  showSection('detail-anchor-section', 'detail-anchor',
+    anchorText && rec.anchor?.snippet ? `${anchorText}: “${truncate(rec.anchor.snippet, 200)}”` : anchorText);
+  showSection('detail-selection-section', 'detail-selection', rec.selectionSnippet);
+  showSection('detail-note-section', 'detail-note', rec.note);
+
+  const jumpBtn = $('#detail-jump');
+  jumpBtn.textContent = closed ? 'Reopen' : 'Jump to tab';
+  const closeBtn = $('#detail-close-tab');
+  closeBtn.textContent = closed ? 'Dismiss' : 'Close';
+
+  $('#detail-backdrop').hidden = false;
+  $('#detail-modal').hidden = false;
+}
+
+function closeDetail() {
+  $('#detail-backdrop').hidden = true;
+  $('#detail-modal').hidden = true;
+  detailRec = null;
+}
+
+$('#detail-backdrop').addEventListener('click', closeDetail);
+$('#detail-close').addEventListener('click', closeDetail);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && detailRec) closeDetail(); });
+
+$('#detail-jump').addEventListener('click', async () => {
+  if (!detailRec) return;
+  if (detailClosed) await send('ts:restore', { ids: [detailRec.id], focus: true }).catch(showError);
+  else await jumpTo(detailRec);
+  closeDetail();
+});
+
+$('#detail-close-tab').addEventListener('click', async () => {
+  if (!detailRec) return;
+  if (detailClosed) await send('ts:dismiss', { ids: [detailRec.id] }).catch(showError);
+  else await chrome.tabs.remove(detailRec.tabId).catch(showError);
+  closeDetail();
+});
+
+$('#detail-insight-btn').addEventListener('click', async () => {
+  if (!detailRec) return;
+  const btn = $('#detail-insight-btn');
+  btn.disabled = true;
+  btn.textContent = 'Thinking…';
+  try {
+    const { text, source, errors } = await getInsight(detailRec, state.settings);
+    $('#detail-insight').textContent = text;
+    if (source === 'template' && errors.length) showToast(errors[0]);
+  } catch (err) {
+    showError(err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Get a deeper AI insight';
+  }
+});
 
 $('#purge').addEventListener('click', () => {
   const n = state.purgeIds.length;
