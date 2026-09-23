@@ -3,7 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "license": "MIT",
   "description": "Intent-tracking tab dashboard (Chrome MV3 extension)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asyau/tab-state.git"
+  },
   "scripts": {
     "test": "node --test tests/unit/*.test.js",
     "test:e2e": "node tests/e2e/run.mjs"

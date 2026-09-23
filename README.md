@@ -107,6 +107,30 @@ not mocks.
 
 ## Roadmap
 
-- Hosted "Pro" summary tier (a small proxy holding the API key, paywalled via ExtensionPay), so
-  someone without a model of their own can still get AI summaries.
-- Per-user threshold tuning.
+**v2**
+- **Session recap** — one AI-generated line summarizing the whole session ("You went deep on
+  auth docs and the async post, skimmed the recipe roundup, never opened 5 background tabs"),
+  reusing the existing provider chain instead of only per-tab summaries.
+- **Follow-up notes** — a free-text note on any card ("want to read this properly later").
+  Writing one flags the tab as Follow Up, exempts it from Purge regardless of bucket, and the
+  note is blended into that tab's AI summary. Starts fully manual; a "notice what I tend to
+  flag" learning layer is a later refinement once there's real usage to learn from.
+- **Editable thresholds** — the active-time/scroll-depth cutoffs in `lib/config.js` become
+  user-editable in Settings instead of fixed constants.
+- **Lightweight insights** — a one-line "how you used the browser today" summary in the
+  dashboard header; a fuller charts view is a possible stretch, not the default.
+- **Daily check-list** — mark specific sites "check daily"; the dashboard badges ones not yet
+  checked today. Reuses the existing `chrome.alarms` heartbeat to reset at local midnight — no
+  extra permission, no OS notification.
+- **AI-assisted tab grouping** (optional, off by default) — uses `chrome.tabGroups` to group
+  related tabs on request. Kept strictly opt-in: the product's whole differentiation is
+  classifying tabs by *how you engaged*, not *what they are*, and always-on category grouping
+  would blur that.
+- **Hosted "Pro" summary tier** (a small proxy holding the API key, paywalled via ExtensionPay),
+  so someone without a model of their own can still get AI summaries.
+
+**v3**
+- **MCP server support** — the extension can't host an MCP server itself (browser sandbox), so
+  this needs a companion local process bridged via Chrome's Native Messaging API, exposing
+  tracked session data as MCP tools/resources (e.g. "what was I reading about last week") to
+  Claude or any other MCP client. A real sub-project, not a flag to flip.
