@@ -149,9 +149,21 @@
     }
   }
 
+  /**
+   * A short line describing what the page is about, for the dashboard summary. Prefers the
+   * real meta description; many pages don't have one, so falls back to the page's own <h1> —
+   * still a short heading, not body content, same sensitivity as the reading-position anchor
+   * already captured elsewhere in this file.
+   */
+  function pageDescription() {
+    const meta = document.querySelector('meta[name="description"], meta[property="og:description"]');
+    if (meta?.content?.trim()) return meta.content.trim();
+    const h1 = document.querySelector('h1')?.innerText?.trim();
+    return h1 || '';
+  }
+
   function sendMeta() {
-    const desc = document.querySelector('meta[name="description"], meta[property="og:description"]');
-    send({ type: 'ts:meta', title: document.title, description: desc?.content || '' });
+    send({ type: 'ts:meta', title: document.title, description: pageDescription().slice(0, 300) });
   }
 
   function onVisibility() {

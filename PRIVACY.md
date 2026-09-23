@@ -10,7 +10,8 @@ summary of what you did. This page explains exactly what that involves.
 
 For each tab you have open, Tab State records:
 
-- The page's **URL, title, domain**, and its `<meta name="description">` text if present
+- The page's **URL, title, domain**, and a short description of what it's about — its
+  `<meta name="description">` tag if present, or its main `<h1>` heading if not
 - **Active time**: how long the tab was focused and visible (not simply "open")
 - **Scroll depth**: the furthest percentage down the page you reached
 - **Interaction counts**: how many times you copied text, highlighted text, or clicked a link
