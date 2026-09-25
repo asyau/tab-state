@@ -32,7 +32,7 @@
     <div id="checklist-list" class="checklist-list"></div>
   </section>
 
-  <div id="purge-confirm" class="banner" hidden>
+  <div id="purge-confirm" class="banner" role="alert" hidden>
     <span id="purge-confirm-text"></span>
     <div class="banner-actions">
       <button id="purge-go" class="btn danger">Close them</button>
@@ -40,7 +40,7 @@
     </div>
   </div>
 
-  <div id="group-confirm" class="banner neutral" hidden>
+  <div id="group-confirm" class="banner neutral" role="alert" hidden>
     <div id="group-confirm-body"></div>
     <div class="banner-actions">
       <button id="group-go" class="btn primary">Group them</button>
@@ -56,22 +56,22 @@
 
   <main id="board" class="board">
     <section class="col" data-bucket="glanced">
-      <h2><span class="col-emoji">👁️</span> Just Glanced <span class="count"></span></h2>
+      <h2><span class="col-emoji" aria-hidden="true">👁️</span> Just Glanced <span class="count"></span></h2>
       <p class="col-hint">Skipped within seconds</p>
       <div class="cards"></div>
     </section>
     <section class="col" data-bucket="partial">
-      <h2><span class="col-emoji">📖</span> Partially Read <span class="count"></span></h2>
+      <h2><span class="col-emoji" aria-hidden="true">📖</span> Partially Read <span class="count"></span></h2>
       <p class="col-hint">Skimmed, not finished</p>
       <div class="cards"></div>
     </section>
     <section class="col col-focus" data-bucket="deep">
-      <h2><span class="col-emoji">🎯</span> Deep Focus <span class="count"></span></h2>
+      <h2><span class="col-emoji" aria-hidden="true">🎯</span> Deep Focus <span class="count"></span></h2>
       <p class="col-hint">Where your real work is</p>
       <div class="cards"></div>
     </section>
     <section class="col" data-bucket="ghost">
-      <h2><span class="col-emoji">👻</span> Ghost Tabs <span class="count"></span></h2>
+      <h2><span class="col-emoji" aria-hidden="true">👻</span> Ghost Tabs <span class="count"></span></h2>
       <p class="col-hint">Opened, never looked at</p>
       <div class="cards"></div>
     </section>
@@ -97,7 +97,7 @@
 
     <section class="detail-section">
       <h3>AI Insight</h3>
-      <p id="detail-insight" class="detail-insight"></p>
+      <p id="detail-insight" class="detail-insight" aria-live="polite"></p>
       <button id="detail-insight-btn" class="btn small subtle" type="button">Get a deeper AI insight</button>
     </section>
 

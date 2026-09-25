@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Tab State",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "homepage_url": "https://github.com/asyau/tab-state",
   "description": "Remembers how you used each tab (glanced, skimmed, deep focus, never opened) and where you stopped.",
   "minimum_chrome_version": "116",
   "permissions": ["tabs", "tabGroups", "storage", "idle", "alarms", "scripting", "favicon"],
@@ -11,14 +12,14 @@
     { "matches": ["http://*/*", "https://*/*", "file:///*"], "js": ["content.js"], "run_at": "document_idle" }
   ],
   "action": {
-    "default_title": "Open State Dashboard",
+    "default_title": "Open Tab State dashboard",
     "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png" }
   },
   "options_page": "ui/settings.html",
   "commands": {
     "_execute_action": {
       "suggested_key": { "default": "Alt+Shift+S" },
-      "description": "Open the State Dashboard"
+      "description": "Open the Tab State dashboard"
     }
   },
   "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }

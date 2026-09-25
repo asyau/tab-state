@@ -27,6 +27,7 @@ const state = {
   recapFingerprint: '',
   recapBusy: false,
   pendingGroups: [],
+  renderDeferred: false,
 };
 
 // --- Data -------------------------------------------------------------------------
@@ -109,7 +110,8 @@ function buildCard(rec, now, { closed = false } = {}) {
   const favicon = node.querySelector('.favicon');
   favicon.src = faviconUrl(rec.url);
   favicon.title = 'View details';
-  favicon.addEventListener('click', () => openDetail(rec, { closed }));
+  const openIt = () => openDetail(rec, { closed });
+  favicon.addEventListener('click', openIt);
   const title = node.querySelector('.title');
   title.textContent = rec.title || rec.url;
   title.title = rec.url;
@@ -120,7 +122,14 @@ function buildCard(rec, now, { closed = false } = {}) {
   const meta = node.querySelector('.meta');
   meta.textContent = `${domainOf(rec.url)} · ${when}`;
   meta.title = 'View details';
-  meta.addEventListener('click', () => openDetail(rec, { closed }));
+  meta.setAttribute('role', 'button');
+  meta.setAttribute('aria-haspopup', 'dialog');
+  meta.setAttribute('aria-label', `${meta.textContent}, view details`);
+  meta.tabIndex = 0;
+  meta.addEventListener('click', openIt);
+  meta.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openIt(); }
+  });
 
   const badges = node.querySelector('.badges');
   if (bucket === 'ghost') badges.append(badge('never opened'));
@@ -159,6 +168,7 @@ function buildCard(rec, now, { closed = false } = {}) {
   noteInput.addEventListener('blur', () => {
     const value = noteInput.value.trim();
     if (value !== (rec.note || '')) send('ts:setNote', { id: rec.id, note: value }).catch(showError);
+    if (state.renderDeferred) { state.renderDeferred = false; scheduleRefresh(); }
   });
 
   const jump = node.querySelector('.jump');
@@ -192,7 +202,32 @@ function sortKey(rec) {
   return rec.lastActiveAt || rec.createdAt || 0;
 }
 
+// Cards are rebuilt from scratch on every render (heartbeats trigger one every ~15s). Rebuilding
+// under an in-progress note would wipe it, and would drop a keyboard user's focus, so: defer while
+// a note is being typed, and put focus back on the same control afterwards.
+const FOCUSABLE_CARD_CLASSES = ['jump', 'note-toggle', 'watch-toggle', 'close', 'title', 'meta'];
+
+function captureFocus() {
+  const el = document.activeElement;
+  const card = el?.closest?.('.card');
+  const cls = card && FOCUSABLE_CARD_CLASSES.find((c) => el.classList.contains(c));
+  if (!cls) return null;
+  const region = card.closest('#followup-list') ? '#followup-list' : card.closest('#closed-list') ? '#closed-list' : '#board';
+  return { id: card.dataset.id, region, cls };
+}
+
+function restoreFocus(f) {
+  if (f) document.querySelector(`${f.region} .card[data-id="${f.id}"] .${f.cls}`)?.focus();
+}
+
 function render() {
+  if (document.activeElement?.classList?.contains('note-input')) { state.renderDeferred = true; return; }
+  const focus = captureFocus();
+  renderNow();
+  restoreFocus(focus);
+}
+
+function renderNow() {
   const now = Date.now();
   const open = state.records.filter(isOpen);
   const groups = Object.fromEntries(BUCKETS.map((b) => [b, []]));
@@ -322,6 +357,12 @@ function showError(err) {
 let detailRec = null;
 let detailClosed = false;
 
+// aria-modal alone doesn't stop Tab from wandering into the page behind the dialog; inert does.
+const BACKGROUND_SELECTOR = '.topbar, #recap, #checklist, #purge-confirm, #group-confirm, #followup, #board, #closed';
+function setBackgroundInert(on) {
+  document.querySelectorAll(BACKGROUND_SELECTOR).forEach((el) => { el.inert = on; });
+}
+
 function showSection(sectionId, textId, text) {
   const has = !!text;
   $(`#${sectionId}`).hidden = !has;
@@ -371,12 +412,18 @@ function openDetail(rec, { closed }) {
 
   $('#detail-backdrop').hidden = false;
   $('#detail-modal').hidden = false;
+  setBackgroundInert(true);
+  $('#detail-close').focus();
 }
 
 function closeDetail() {
+  const id = detailRec?.id;
   $('#detail-backdrop').hidden = true;
   $('#detail-modal').hidden = true;
   detailRec = null;
+  setBackgroundInert(false);
+  // The card may have been rebuilt while the modal was open, so find it again rather than keep a stale node.
+  if (id) document.querySelector(`.card[data-id="${id}"] .meta`)?.focus();
 }
 
 $('#detail-backdrop').addEventListener('click', closeDetail);

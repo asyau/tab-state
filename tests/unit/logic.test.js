@@ -57,6 +57,7 @@ test('formatDuration', () => {
 test('template summaries read naturally', () => {
   assert.equal(templateSummary(rec()), 'Opened in the background, never viewed.');
   assert.equal(templateSummary(rec({ activeMs: 5 * S, maxScrollPct: 8 })), 'Skipped after 5s, only saw the top 8%.');
+  assert.equal(templateSummary(rec({ activeMs: 4 * S, maxScrollPct: 100 })), 'Skipped after 4s.', 'a page that fits on screen was not "only" partly seen');
   assert.equal(
     templateSummary(rec({ activeMs: 45 * S, maxScrollPct: 40, anchor: { kind: 'heading', heading: 'Installation', snippet: '' } })),
     'Skimmed 40% over 45s and stopped at the “Installation” section.');
@@ -79,6 +80,21 @@ test('templateSummary prefixes the page topic when a meta description is present
   const long = rec({ description: 'x'.repeat(200) });
   const summary = templateSummary(long);
   assert.ok(summary.startsWith('x'.repeat(99) + '…'), summary);
+});
+
+test('templateSummary drops a topic that merely restates the title', () => {
+  // Real pages: Wikipedia's <h1> is "Web browser" under the title "Web browser - Wikipedia";
+  // example.com's <h1> equals its title. Repeating either adds noise, not context.
+  const wiki = rec({ title: 'Web browser - Wikipedia', description: 'Web browser' });
+  assert.equal(templateSummary(wiki), 'Opened in the background, never viewed.');
+  const same = rec({ title: 'Example Domain', description: 'Example Domain' });
+  assert.equal(templateSummary(same), 'Opened in the background, never viewed.');
+  // A genuinely different description is kept, including in non-Latin scripts (the comparison
+  // must not strip everything and wrongly call it redundant).
+  const other = rec({ title: 'Docs', description: 'How to authenticate API requests.' });
+  assert.match(templateSummary(other), /^How to authenticate API requests\. — /);
+  const jp = rec({ title: 'ホーム', description: '日本語の説明です' });
+  assert.match(templateSummary(jp), /^日本語の説明です — /);
 });
 
 test('templateInsight adds the selection and note as extra sentences', () => {

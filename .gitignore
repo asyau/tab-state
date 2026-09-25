@@ -1,5 +1,5 @@
 node_modules/
 tests/e2e/output/*
-!tests/e2e/output/store/
+dist/
 *.log
 .DS_Store

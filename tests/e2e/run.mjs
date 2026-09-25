@@ -379,6 +379,34 @@ await dash.locator('#detail-backdrop').click({ position: { x: 5, y: 5 } });
 await sleep(200);
 assert.equal(await dash.locator('#detail-modal').isHidden(), true, 'clicking the backdrop closes it too');
 
+// --- Accessibility: keyboard, focus management, and re-render safety ---------------------------
+
+const kbMeta = dash.locator('.col[data-bucket="deep"] .card', { hasText: 'Auth API Reference' }).locator('.meta');
+assert.equal(await kbMeta.getAttribute('role'), 'button', 'domain line is announced as a button');
+await kbMeta.focus();
+await dash.keyboard.press('Enter');
+await sleep(300);
+assert.equal(await dash.locator('#detail-modal').isHidden(), false, 'Enter on the domain line opens the details');
+assert.equal(await dash.evaluate(() => document.activeElement?.id), 'detail-close', 'focus moves into the dialog');
+assert.equal(await dash.evaluate(() => document.querySelector('#board').inert), true, 'page behind the dialog is inert');
+await dash.keyboard.press('Escape');
+await sleep(300);
+assert.equal(await dash.evaluate(() => document.querySelector('#board').inert), false, 'page is interactive again');
+assert.equal(await dash.evaluate(() => document.activeElement?.classList.contains('meta')), true,
+  'focus returns to the control that opened the dialog');
+
+// Heartbeats re-render the board every ~15s; a note being typed must survive that.
+const typingCard = dash.locator('.col[data-bucket="ghost"] .card').first();
+await typingCard.locator('.note-toggle').click();
+await typingCard.locator('.note-input').fill('typing in progress');
+await bg(async () => chrome.storage.local.set({ watchlist: [{ domain: 'rerender.test', label: 'rerender', addedAt: Date.now() }] }));
+await sleep(1200);
+assert.equal(await dash.locator('.note-input:focus').inputValue(), 'typing in progress',
+  'an in-progress note (and its focus) survives a background re-render');
+await dash.locator('#stats').click(); // blur saves the note
+await sleep(600);
+await bg(async () => chrome.storage.local.set({ watchlist: [] }));
+
 // --- Done --------------------------------------------------------------------------------------
 
 const relevant = errors.filter((e) => !/favicon|ERR_CONNECTION_REFUSED|11434/.test(e));

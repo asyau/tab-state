@@ -21,10 +21,14 @@ when you submit. Nothing here requires code changes — it's the paperwork.
 > it only tracks how you engaged with it, so the same site can land in a different category
 > depending on whether you actually read it.
 >
+> • A one-line summary on every card that starts with what the page is about
+> • Click any card for a detail view: where you stopped, what you copied, and an on-demand AI insight
 > • Purge Ghost & Glanced tabs in one click, with undo
 > • Follow-up notes that exempt a tab from ever being purged
 > • A daily check-list for sites you want to remember to look at
+> • A one-line recap of your whole session
 > • Editable sort thresholds
+> • Optional, opt-in AI tab grouping (off by default)
 > • Works with zero setup — on-device AI (Gemini Nano) or a deterministic built-in summary by
 >   default; bring your own OpenAI-compatible or Anthropic API key for smarter summaries
 > • 100% local. No accounts, no analytics, nothing sent anywhere unless you turn on a cloud AI
@@ -43,7 +47,7 @@ Tick these to match `PRIVACY.md`:
 | Data type | Collected? | Why |
 |---|---|---|
 | Web history / URLs | Yes | To identify and label each tracked tab |
-| Website content | **No** | Only page titles/descriptions/metrics are read, never page content |
+| Website content | Yes, limited | Page title, description and the heading nearest where you stopped. Stored locally; sent off-device **only** if the user turns on a cloud AI provider. Never the page body, never selected text |
 | Personally identifiable info | No | — |
 | Authentication info | No (unless the user pastes their own API key into Settings — stored locally only, never transmitted to Tab State) | — |
 
@@ -76,10 +80,18 @@ Paste one line per permission where the dashboard asks for a justification:
 
 ## Assets checklist
 
-- [x] Icons (16/32/48/128px) — already in `icons/`
-- [ ] At least 1 screenshot, 1280×800px (up to 5) — see `tests/e2e/output/store/`
-- [ ] Small promo tile, 440×280px — optional but commonly expected; not yet made
-- [ ] Marquee image, 1400×560px — optional, only for featured placement
+- [x] Icons (16/32/48/128px) — in `icons/`
+- [x] Screenshots, 1280×800px — `docs/screenshots/1-dashboard.png`, `2-detail.png`, `3-purge-confirm.png`, `4-settings.png` (upload in this order)
+- [x] Small promo tile, 440×280px — `docs/promo/small-tile-440x280.png`
+- [x] Marquee image, 1400×560px — `docs/promo/marquee-1400x560.png` (only used for featured placement)
+- [x] Upload package — `npm run package` builds `dist/tab-state-<version>.zip`
+- [ ] Regenerate all of the above after any UI change: `npm run screenshots && npm run promo`
+
+**"Test instructions" field for reviewers** (paste as-is):
+> No account or login needed. Install, open a few normal websites in different tabs and read one
+> of them for a minute (scroll, select some text). Click the toolbar icon to open the dashboard:
+> each tab appears in Just Glanced / Partially Read / Deep Focus / Ghost. Click a card's domain
+> line for details. AI features are optional and off until a provider is configured in Settings.
 
 ## Before you click submit
 

@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const OUT = process.env.E2E_OUT || path.join(ROOT, 'tests/e2e/output/store');
+const OUT = process.env.E2E_OUT || path.join(ROOT, 'docs/screenshots');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const SIZE = { width: 1280, height: 800 };
 
@@ -21,13 +21,13 @@ const PAGES = {
   '/docs': `<title>Authentication — Stripe API Reference</title><meta name="description" content="How to authenticate API requests.">
     <h1>API Reference</h1>${para(6)}<h2>Installation</h2>${para(8)}
     <h2>Authentication</h2>${para(4)}<pre><code>curl https://api.example.com/v1/charges -u sk_test_123:</code></pre>${para(10)}`,
-  '/rust': `<title>Why Rust Async Is Hard — a deep dive</title><h1>Why Rust async is hard</h1>${para(5)}
+  '/rust': `<title>Why Rust Async Is Hard — a deep dive</title><meta name="description" content="Pinning, executors and why futures feel harder than threads."><h1>Why Rust async is hard</h1>${para(5)}
     <h2>Pinning</h2>${para(10)}<h2>Executors</h2>${para(10)}`,
-  '/isaac': `<title>NVIDIA Isaac Sim — Getting Started</title><h1>Isaac Sim</h1>${para(20)}`,
-  '/recipe': `<title>10 Clickbait Pasta Recipes You Won't Believe</title><h1>Recipes</h1>${para(40)}`,
-  '/thread': `<title>Random forum thread about keyboards</title><h1>Thread</h1><p>Hello</p>`,
-  '/newsletter': `<title>Weekly Dev Newsletter #142</title><h1>Newsletter</h1><p>Hello</p>`,
-  '/gmail': `<title>Inbox — Gmail</title><h1>Inbox</h1>${para(3)}`,
+  '/isaac': `<title>NVIDIA Isaac Sim — Getting Started</title><meta name="description" content="A robotics simulator for training and testing AI-driven robots."><h1>Isaac Sim</h1>${para(20)}`,
+  '/recipe': `<title>10 Clickbait Pasta Recipes You Won't Believe</title><meta name="description" content="A listicle of pasta recipes, mostly ads."><h1>Recipes</h1>${para(40)}`,
+  '/thread': `<title>Random forum thread about keyboards</title><meta name="description" content="Users argue about switch types and keycap profiles."><h1>Thread</h1><p>Hello</p>`,
+  '/newsletter': `<title>Weekly Dev Newsletter #142</title><meta name="description" content="This week: a new bundler, Postgres tips and an API design essay."><h1>Newsletter</h1><p>Hello</p>`,
+  '/gmail': `<title>Inbox — Gmail</title><meta name="description" content="Your email, organized."><h1>Inbox</h1>${para(3)}`,
 };
 
 const server = http.createServer((req, res) => {
@@ -121,16 +121,16 @@ console.log('saved 1-dashboard.png');
 
 await dash.click('#purge');
 await sleep(300);
-await dash.screenshot({ path: path.join(OUT, '2-purge-confirm.png') });
-console.log('saved 2-purge-confirm.png');
+await dash.screenshot({ path: path.join(OUT, '3-purge-confirm.png') });
+console.log('saved 3-purge-confirm.png');
 await dash.click('#purge-cancel');
 await sleep(300);
 
 // Card detail view: click-to-expand, AI insight, and the (non-screenshot) preview.
 await dash.locator('.col[data-bucket="deep"] .card', { hasText: 'Authentication' }).locator('.favicon').click();
 await sleep(500);
-await dash.screenshot({ path: path.join(OUT, '4-detail.png') });
-console.log('saved 4-detail.png');
+await dash.screenshot({ path: path.join(OUT, '2-detail.png') });
+console.log('saved 2-detail.png');
 await dash.keyboard.press('Escape');
 await sleep(300);
 
@@ -139,8 +139,8 @@ await settings.setViewportSize(SIZE);
 await settings.goto(`chrome-extension://${extId}/ui/settings.html`);
 await settings.bringToFront();
 await sleep(800);
-await settings.screenshot({ path: path.join(OUT, '3-settings.png') });
-console.log('saved 3-settings.png');
+await settings.screenshot({ path: path.join(OUT, '4-settings.png') });
+console.log('saved 4-settings.png');
 
 await context.close();
 server.close();

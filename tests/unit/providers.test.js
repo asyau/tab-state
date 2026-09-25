@@ -2,7 +2,7 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   summarize, summarizeSession, getInsight, providerChain, sendsDataOffDevice, nanoAvailability,
-  proposeGroups, parseGroupsJson,
+  proposeGroups, parseGroupsJson, resetNanoSessions,
 } from '../../ai/providers.js';
 import { mergeSettings } from '../../lib/settings.js';
 
@@ -10,6 +10,7 @@ const realFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = realFetch;
   delete globalThis.LanguageModel;
+  resetNanoSessions();
 });
 
 const record = {
@@ -99,6 +100,39 @@ test('privacy flag only for cloud providers', () => {
   assert.equal(sendsDataOffDevice(mergeSettings({})), false);
   assert.equal(sendsDataOffDevice(mergeSettings({ provider: 'openai' })), true);
   assert.equal(sendsDataOffDevice(mergeSettings({ provider: 'anthropic' })), true);
+});
+
+// --- Privacy: no raw page text to cloud providers ------------------------------------------
+
+const withText = {
+  ...record,
+  selectionSnippet: 'SECRET-SELECTION-TEXT',
+  anchor: { kind: 'text', heading: 'Setup', snippet: 'SECRET-NEARBY-PARAGRAPH' },
+};
+
+test('cloud providers never receive selected or nearby page text', async () => {
+  const calls = mockFetch(() => json(200, { choices: [{ message: { content: 'ok.' } }] }));
+  const settings = mergeSettings({ provider: 'openai', openai: { apiKey: 'k', model: 'm' } });
+  await summarize(withText, settings);
+  await getInsight(withText, settings);
+  assert.equal(calls.length, 2);
+  for (const c of calls) {
+    const sent = JSON.stringify(c.body);
+    assert.ok(!sent.includes('SECRET-SELECTION-TEXT'), 'selected text must not be sent');
+    assert.ok(!sent.includes('SECRET-NEARBY-PARAGRAPH'), 'nearby paragraph text must not be sent');
+    assert.ok(sent.includes('Setup'), 'the heading (metadata) is still sent');
+  }
+});
+
+test('on-device AI still gets the text, since nothing leaves the machine', async () => {
+  let prompted = '';
+  globalThis.LanguageModel = {
+    availability: async () => 'available',
+    create: async () => ({ clone: async () => ({ prompt: async (p) => { prompted = p; return 'ok.'; }, destroy() {} }) }),
+  };
+  await summarize(withText, mergeSettings({}));
+  assert.match(prompted, /SECRET-SELECTION-TEXT/);
+  assert.match(prompted, /SECRET-NEARBY-PARAGRAPH/);
 });
 
 // --- Session recap -------------------------------------------------------------------------

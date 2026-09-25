@@ -19,7 +19,7 @@
       <p id="nano-status" class="note"></p>
       <div class="row"><button id="enable-nano" type="button" class="btn" hidden>Download on-device model</button></div>
 
-      <fieldset id="openai-fields" class="panel" hidden>
+      <fieldset id="openai-fields" class="panel" aria-label="OpenAI-compatible API settings" hidden>
         <h2>OpenAI-compatible API</h2>
         <div class="field">
           <label for="openai-preset">Preset</label>
@@ -40,7 +40,7 @@
         <p class="note">Ollama: start it with <code>OLLAMA_ORIGINS="chrome-extension://*" ollama serve</code> so the extension is allowed to call it.</p>
       </fieldset>
 
-      <fieldset id="anthropic-fields" class="panel" hidden>
+      <fieldset id="anthropic-fields" class="panel" aria-label="Anthropic API settings" hidden>
         <h2>Anthropic API</h2>
         <div class="field">
           <label for="anthropic-key">API key</label>
@@ -60,9 +60,9 @@
       <div class="row">
         <button type="submit" class="btn primary">Save</button>
         <button id="test" type="button" class="btn">Test with a sample tab</button>
-        <span id="saved" class="muted" hidden>Saved</span>
+        <span id="saved" class="muted" role="status" hidden>Saved</span>
       </div>
-      <div id="test-result" class="result"></div>
+      <div id="test-result" class="result" aria-live="polite"></div>
     </form>
 
     <form id="thresholds-form" class="panel" autocomplete="off">
@@ -86,7 +86,7 @@
       <div class="row">
         <button type="submit" class="btn primary">Save</button>
         <button id="thresholds-reset" type="button" class="btn subtle">Reset to defaults</button>
-        <span id="thresholds-saved" class="muted" hidden>Saved</span>
+        <span id="thresholds-saved" class="muted" role="status" hidden>Saved</span>
       </div>
     </form>
 

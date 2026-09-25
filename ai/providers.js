@@ -62,6 +62,11 @@ async function createNanoSession(systemPrompt, onProgress) {
 // (per-tab summary, session recap, grouping) gets its own cached session.
 const nanoSessions = new Map();
 
+/** For tests: drop cached on-device sessions so a fresh mock model is picked up. */
+export function resetNanoSessions() {
+  nanoSessions.clear();
+}
+
 /** Must be called from a click handler: starts (or finishes) the model download. */
 export async function enableNano(onProgress) {
   const session = await createNanoSession(SYSTEM_PROMPT, onProgress);
@@ -193,7 +198,7 @@ export function summarize(record, settings) {
   return runChain(
     providerChain(settings),
     SYSTEM_PROMPT,
-    buildUserPrompt(record, Date.now(), thresholds),
+    buildUserPrompt(record, Date.now(), thresholds, { includeText: !sendsDataOffDevice(settings) }),
     settings,
     () => templateSummary(record, Date.now(), thresholds),
   );
@@ -218,7 +223,7 @@ export function getInsight(record, settings) {
   return runChain(
     providerChain(settings),
     INSIGHT_SYSTEM_PROMPT,
-    buildUserPrompt(record, Date.now(), thresholds),
+    buildUserPrompt(record, Date.now(), thresholds, { includeText: !sendsDataOffDevice(settings) }),
     settings,
     () => templateInsight(record, Date.now(), thresholds),
     500,

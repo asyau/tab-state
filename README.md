@@ -1,149 +1,175 @@
 # Tab State
 
-A Chrome extension that tracks *how* you actually used each tab — not what site it is, but
-whether you glanced at it, skimmed it, read it closely, or never looked at it at all — and shows
-a Kanban dashboard sorted by that, with a one-line note on where you stopped in each one.
+[![test](https://github.com/asyau/tab-state/actions/workflows/test.yml/badge.svg)](https://github.com/asyau/tab-state/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Everything runs locally by default: no account, no setup, no API key required.
+**Your tabs, sorted by how you actually used them — and exactly where you stopped.**
 
-## Install (unpacked, for development)
+Most tab managers sort by *what a page is* (work, social, news). Tab State sorts by *what you did
+with it*: glanced at it for two seconds, skimmed half of it, read it closely and copied a snippet,
+or never opened it at all. Come back after a lunch break, a meeting, or a weekend and the
+dashboard tells you which handful of tabs mattered and where you left off, so you can close the
+rest without worrying you're throwing something away.
+
+Free, open source, works with no account and no setup. Everything stays on your machine unless you
+choose to connect an AI provider.
+
+![The Tab State dashboard: tabs sorted into Just Glanced, Partially Read, Deep Focus and Ghost columns, with a session recap, a daily check-list and a Follow Up section](docs/screenshots/1-dashboard.png)
+
+## What you get
+
+- **Four buckets, driven by behavior.** Active reading time (only while the tab is focused),
+  scroll depth, and whether you copied or highlighted anything decide where a tab lands:
+  👁️ Just Glanced · 📖 Partially Read · 🎯 Deep Focus · 👻 Ghost (never really looked at).
+  The thresholds are editable.
+- **A one-line summary that starts with what the page is about.** *"A robotics simulator for
+  training and testing AI-driven robots. — Barely opened (under 2s) and never read."* Even a tab
+  you ignored tells you what it was.
+- **Click any card for details.** Where you stopped (the heading or code block nearest your
+  scroll position), what you copied, your note, and an on-demand AI insight paragraph.
+- **Purge with a safety net.** Close every Ghost and Glanced tab in one click, with a confirm
+  step and a 30-second undo. Pinned tabs, the tab you're on, and anything with a note are never
+  touched.
+- **Follow-up notes.** Write *"want to actually learn this"* on a card and Tab State will never
+  suggest closing it, no matter how little you looked at it.
+- **Session recap.** One line summarizing your whole session: what you focused on and what you
+  skipped.
+- **Daily check-list.** Mark sites you want to look at every day; the dashboard shows which ones
+  you haven't opened yet today.
+- **Optional AI tab grouping.** Off by default. When you turn it on and click the button, it
+  proposes groups, shows them to you, and only applies them if you confirm.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/2-detail.png" alt="Card detail view with an AI insight, where you stopped, and the last selected text"><br><sub>Detail view: an insight, where you stopped, what you copied</sub></td>
+    <td width="50%"><img src="docs/screenshots/3-purge-confirm.png" alt="Purge confirmation banner"><br><sub>Purge asks first, and can be undone</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/screenshots/4-settings.png" alt="Settings page with summary provider and editable sort thresholds"><br><sub>Settings: pick a summary provider, tune the thresholds</sub></td>
+  </tr>
+</table>
+
+## Install
+
+**Chrome Web Store:** *(link coming once it's published)*
+
+**From source** (works today, needs Chrome 116+):
 
 ```bash
-git clone <this repo>
+git clone https://github.com/asyau/tab-state.git
 ```
 
-1. Open `chrome://extensions/`
-2. Turn on **Developer mode** (top right)
-3. Click **Load unpacked**, select the `tab-state/` folder
-4. Click the toolbar icon to open the dashboard (or `Alt+Shift+S`)
+1. Open `chrome://extensions/` and turn on **Developer mode** (top right)
+2. Click **Load unpacked** and choose the `tab-state` folder
+3. Browse normally for a few minutes, then click the Tab State icon (or press `Alt+Shift+S`)
+
+After pulling new changes, click the reload icon on the extension's card in `chrome://extensions/`.
 
 ## How tabs are sorted
 
-| Bucket | Rule |
+| Bucket | Rule (defaults, editable in Settings) |
 |---|---|
 | 🎯 Deep Focus | Copied or highlighted text, or 90s+ active, or 70%+ scrolled with 30s+ active |
-| 👻 Ghost | Active for under 2s (opened in the background, never really looked at) |
+| 👻 Ghost | Active for under 2s |
 | 📖 Partially Read | 15s+ active, or 25%+ scrolled with 5s+ active |
 | 👁️ Just Glanced | Everything else |
 
-"Active time" only counts while the tab is visible, focused, and the window has focus — pausing
-for another app or a locked screen, but **not** for sitting still reading without touching the
-mouse (see [Design notes](#design-notes)).
+"Active time" counts only while the tab is visible and its window is focused. It pauses when you
+switch apps or lock your screen, but **not** when you sit still reading without touching the mouse
+(see [Design notes](#design-notes)).
 
 ## AI summaries (optional)
 
-Each Deep Focus / Partially Read card gets a one-sentence note like *"Spent 2m reading 90% of the
-page, copied a snippet, and stopped at a code block in 'Authentication'."* This works with no setup
-via a deterministic built-in sentence, and gets more natural with a model:
+Tab State writes its one-line summaries without any AI. If you want more natural sentences,
+insights and grouping, pick a provider in **Settings**:
 
-- **On-device (Gemini Nano)** — built into recent Chrome, no data leaves your machine, free.
-- **OpenAI-compatible API** — OpenAI, Ollama, LM Studio, OpenRouter, Groq, or anything else that
-  speaks the `/chat/completions` format. Ollama works with no API key.
-- **Anthropic API** — Claude models directly.
+| Provider | Notes |
+|---|---|
+| **On-device (Gemini Nano)** | Built into recent Chrome, free, nothing leaves your machine. Needs a one-time model download and a capable device. |
+| **OpenAI-compatible API** | OpenAI, OpenRouter, Groq, or a local server such as Ollama or LM Studio. Ollama needs no key (start it with `OLLAMA_ORIGINS="chrome-extension://*"`). |
+| **Anthropic API** | Claude models, bring your own key. |
 
-Configure under **Settings**. Only page titles, descriptions, and your engagement metrics are
-sent to a cloud provider — never page content.
+With a cloud provider, Tab State sends page titles, domains, descriptions, your engagement numbers
+and your notes. It **never** sends page body text or the text you selected. Details, and exactly
+what each feature sends, are in the [privacy policy](PRIVACY.md).
+
+## Design notes
+
+**Time is tracked with timestamps, never a running counter.** Chrome can shut an extension's
+background worker down at any moment, so a focused tab stores `activeSince`; when focus leaves,
+the elapsed time is added and the field cleared. If the *ending* event never arrives (sleep, crash,
+force-quit) a 15-second heartbeat caps how far a segment can be back-dated, so a laptop closed
+overnight adds seconds, not hours.
+
+**Only a locked screen pauses tracking, not mouse or keyboard inactivity.** Chrome's `idle` state
+fires after about a minute without input, but someone deep in a long article often doesn't touch
+the mouse for minutes. Treating that as "away" would undercount exactly the reading this tool is
+meant to surface.
+
+**Records are keyed by normalized URL, not tab id**, because tab ids mean nothing after a restart.
+Restored tabs are matched back to their history by URL as they load.
+
+**Closing tabs is guarded against a real race.** `chrome.tabs.remove()` is asynchronous, so a
+straggling update event for a tab mid-removal could look like a brand-new tab and create a
+duplicate record. Tab ids being removed are held in a short-lived guard until Chrome confirms.
+
+**Topic context uses the page's own metadata only:** its meta description, falling back to its
+`<h1>`. It is dropped when it merely repeats the title.
 
 ## Project layout
 
 ```
-tab-state/
-  manifest.json
-  background.js       # service worker: wires Chrome events to the tracker
-  content.js           # runs in every page: scroll depth, highlights, copies, "where you stopped"
-  lib/
-    tracker.js          # the telemetry engine (see Design notes)
-    classifier.js        # pure classify() function
-    store.js              # chrome.storage.local persistence, one record per key
-    template.js            # deterministic fallback summary
-    config.js, url.js, format.js
-  ai/
-    providers.js       # pluggable summary providers (nano / openai-compatible / anthropic)
-    prompt.js            # the prompt sent to a model
-    settings.js            # provider settings, stored in chrome.storage.local
-  ui/
-    dashboard.html/js/css   # the Kanban board
-    settings.html/js         # provider settings + "how tabs are sorted" + data controls
-  tests/
-    unit/                # node --test, fake chrome.* APIs
-    e2e/                  # Playwright, loads the real extension into Chromium
+manifest.json           Manifest V3
+background.js           service worker: wires Chrome events to the tracker
+content.js              in every page: scroll depth, highlights, copies, reading position, topic
+lib/tracker.js          the engine: active time, records, purge/restore, notes, watch-list
+lib/classifier.js       pure classify()
+lib/settings.js         provider, thresholds and feature toggles
+lib/{store,template,config,url,format}.js
+ai/providers.js         nano / OpenAI-compatible / Anthropic behind one interface
+ai/prompt.js            what is (and is not) sent to a model
+ui/dashboard.*          the board, detail view, recap, check-list
+ui/settings.*           provider, thresholds, grouping toggle, data controls
+scripts/package.mjs     builds the Chrome Web Store zip
+tests/unit              node:test with a fake chrome.* API
+tests/e2e               Playwright against the real extension in Chromium
+docs/                   store submission text, screenshots, promo images
 ```
 
-## Design notes
-
-**Time is tracked with timestamps, never a running counter.** MV3 kills the service worker
-whenever it wants, so nothing can rely on an interval firing continuously. A focused tab stores
-`activeSince`; when focus leaves, `Date.now() - activeSince` is added to `activeMs` and
-`activeSince` is cleared. If the *ending* event never arrives (sleep, crash, force-quit), a
-15-second heartbeat from the content script caps how far a segment can be back-dated when the
-worker wakes up again — so a laptop closed overnight adds at most ~45 seconds, not the whole night.
-
-**Only a locked screen pauses tracking, not mere mouse/keyboard inactivity.** Chrome's `idle` API
-reports `'idle'` after ~60s of no input — but someone deep in a long article often doesn't touch
-the mouse for minutes. Treating that as "away" would undercount exactly the deep-focus reading
-this tool exists to surface. Only `'locked'` (an actual screen lock) pauses the clock.
-
-**Records key on the normalized URL, not the tab id**, because tab ids are meaningless across a
-browser restart. On restart, closed-but-still-open records are matched back to restored tabs by
-URL as they reload (tabs restore lazily, so there's a short revival window for tabs that haven't
-loaded yet).
-
-**Purge → close → undo is guarded against a real race.** Closing a tab via `chrome.tabs.remove()`
-is asynchronous; a straggling `tabs.onUpdated` event for a tab that's mid-removal can otherwise
-look like a brand-new tab once its record has been finalized, minting a duplicate. Tab ids headed
-for removal are held in a short-lived guard until Chrome confirms the removal, so no duplicate
-record gets created in that window (covered by a dedicated regression test).
-
-## Testing
+## Development
 
 ```bash
-npm test                        # unit tests (lib/, ai/) — fake chrome.* APIs, no browser needed
-node tests/e2e/run.mjs          # loads the real extension into Chromium via Playwright, asserts behavior
-node tests/e2e/screenshots.mjs  # generates the 1280x800 Chrome Web Store listing screenshots
+npm install                 # only needed for the browser tests (Playwright)
+npx playwright install chromium
+
+npm test                    # unit tests + package/manifest consistency checks, no browser needed
+npm run test:e2e            # drives the real extension in Chromium and asserts on the dashboard
+npm run test:real           # same, against real websites (needs internet)
+npm run screenshots         # regenerate docs/screenshots (1280x800)
+npm run promo               # regenerate docs/promo
+npm run package             # build dist/tab-state-<version>.zip for the Web Store
+npm run test:smoke          # (EXT_DIR=<unzipped package>) load a build and check it starts cleanly
 ```
 
-The e2e test drives real tabs (scrolling, copying, highlighting, closing, navigating, purging,
-undoing, restarting focus, notes, thresholds, the daily check-list) against a local test server
-and asserts on the actual dashboard DOM — not mocks. Both scripts need
-`npm i -D playwright && npx playwright install chromium` first.
+CI runs `npm test` on every push. The package tests fail if the manifest points at a file that
+doesn't exist, if a permission isn't justified in the store submission doc, or if an import
+wouldn't resolve inside the zip.
 
-## Publishing to the Chrome Web Store
+## Publishing
 
-- [`PRIVACY.md`](PRIVACY.md) — the privacy policy URL required for submission
-- [`docs/chrome-web-store-submission.md`](docs/chrome-web-store-submission.md) — copy-paste
-  store listing text, the single-purpose declaration, and a justification for every permission
-- [`tests/e2e/output/store/`](tests/e2e/output/store/) — current listing screenshots, regenerate
-  with `node tests/e2e/screenshots.mjs` whenever the UI changes
-
-The $5 one-time developer registration and the actual submission are steps only you can do, at
-the [Developer Dashboard](https://chrome.google.com/webstore/devconsole).
+See [`docs/chrome-web-store-submission.md`](docs/chrome-web-store-submission.md) for the store
+listing text, the single-purpose declaration, per-permission justifications and the asset
+checklist, and [`docs/launch-posts.md`](docs/launch-posts.md) for ready-to-post announcements.
 
 ## Roadmap
 
-**v2**
-- **Session recap** — one AI-generated line summarizing the whole session ("You went deep on
-  auth docs and the async post, skimmed the recipe roundup, never opened 5 background tabs"),
-  reusing the existing provider chain instead of only per-tab summaries.
-- **Follow-up notes** — a free-text note on any card ("want to read this properly later").
-  Writing one flags the tab as Follow Up, exempts it from Purge regardless of bucket, and the
-  note is blended into that tab's AI summary. Starts fully manual; a "notice what I tend to
-  flag" learning layer is a later refinement once there's real usage to learn from.
-- **Editable thresholds** — the active-time/scroll-depth cutoffs in `lib/config.js` become
-  user-editable in Settings instead of fixed constants.
-- **Lightweight insights** — a one-line "how you used the browser today" summary in the
-  dashboard header; a fuller charts view is a possible stretch, not the default.
-- **Daily check-list** — mark specific sites "check daily"; the dashboard badges ones not yet
-  checked today. Reuses the existing `chrome.alarms` heartbeat to reset at local midnight — no
-  extra permission, no OS notification.
-- **AI-assisted tab grouping** (optional, off by default) — uses `chrome.tabGroups` to group
-  related tabs on request. Kept strictly opt-in: the product's whole differentiation is
-  classifying tabs by *how you engaged*, not *what they are*, and always-on category grouping
-  would blur that.
-- **Hosted "Pro" summary tier** (a small proxy holding the API key, paywalled via ExtensionPay),
-  so someone without a model of their own can still get AI summaries.
+- **Hosted "Pro" summaries** for people who'd rather not bring an API key (a small proxy plus a
+  paywall). The extension side is already just another OpenAI-compatible endpoint.
+- **MCP server** so an assistant can answer "what was I reading last week?". A browser extension
+  can't host a server itself, so this needs a small companion process bridged with Chrome's Native
+  Messaging.
+- Learning from which tabs you flag, so it can suggest them.
 
-**v3**
-- **MCP server support** — the extension can't host an MCP server itself (browser sandbox), so
-  this needs a companion local process bridged via Chrome's Native Messaging API, exposing
-  tracked session data as MCP tools/resources (e.g. "what was I reading about last week") to
-  Claude or any other MCP client. A real sub-project, not a flag to flip.
+## License
+
+[MIT](LICENSE)

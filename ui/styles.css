@@ -7,6 +7,7 @@
   --border: #e2e2dc;
   --accent: #2f5bd3;
   --accent-soft: #e6ecfb;
+  --on-accent: #ffffff;
   --danger: #c23b30;
   --danger-soft: #fbe9e7;
   --focus: #1f7a4d;
@@ -26,6 +27,7 @@
     --border: #353533;
     --accent: #7c9cf5;
     --accent-soft: #25304d;
+    --on-accent: #10131c;
     --danger: #ef7a6f;
     --danger-soft: #3d2320;
     --focus: #5fc493;
@@ -66,8 +68,12 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 }
 .btn:hover:not(:disabled) { border-color: var(--muted); }
 .btn:disabled { opacity: 0.45; cursor: default; }
-.btn:focus-visible, .title:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn:focus-visible, .title:focus-visible, .meta:focus-visible, .modal-close:focus-visible,
+.note-input:focus-visible, .field input:focus-visible, .field select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .btn.danger { background: var(--danger-soft); border-color: transparent; color: var(--danger); }
 .btn.subtle { background: transparent; }
 .btn.small { padding: 4px 9px; font-size: 12.5px; }

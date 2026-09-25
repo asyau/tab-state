@@ -17,8 +17,12 @@ export const SYSTEM_PROMPT = [
   'No preamble, no quotes, no markdown. Output only the sentence.',
 ].join(' ');
 
-/** Only page metadata and engagement metrics go into the prompt, never the page body. */
-export function buildUserPrompt(r, now = Date.now(), thresholds) {
+/**
+ * Only page metadata and engagement metrics go into the prompt, never the page body.
+ * `includeText: false` (used for cloud providers) also drops the two short raw-text fragments —
+ * the last selection and the text near where the reader stopped — so no page text leaves the device.
+ */
+export function buildUserPrompt(r, now = Date.now(), thresholds, { includeText = true } = {}) {
   const bucket = classify(r, now, thresholds);
   const lines = [
     `Title: ${truncate(r.title, 150)}`,
@@ -32,10 +36,10 @@ export function buildUserPrompt(r, now = Date.now(), thresholds) {
   );
   if (r.copies) lines.push(`Copied text: ${r.copies} time(s)`);
   if (r.highlights) lines.push(`Highlighted text: ${r.highlights} time(s)`);
-  if (r.selectionSnippet) lines.push(`Last selected text: "${truncate(r.selectionSnippet, 120)}"`);
+  if (includeText && r.selectionSnippet) lines.push(`Last selected text: "${truncate(r.selectionSnippet, 120)}"`);
   const anchor = describeAnchor(r.anchor);
   if (anchor) lines.push(`Stopped at: ${anchor}`);
-  if (r.anchor?.snippet && r.anchor.kind !== 'heading') lines.push(`Text there: "${truncate(r.anchor.snippet, 100)}"`);
+  if (includeText && r.anchor?.snippet && r.anchor.kind !== 'heading') lines.push(`Text there: "${truncate(r.anchor.snippet, 100)}"`);
   if (r.note) lines.push(`User's own note: "${truncate(r.note, 200)}"`);
   return lines.join('\n');
 }

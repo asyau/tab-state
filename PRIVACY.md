@@ -37,12 +37,21 @@ deterministic, on-device sentence generator unless you explicitly turn on an AI 
 
 - **On-device (Gemini Nano)**: runs entirely inside Chrome, on your machine. Nothing is sent
   anywhere.
-- **An OpenAI-compatible API or the Anthropic API**, configured by you in Settings: if you turn
-  one of these on, then for tabs in the "Deep Focus" or "Partially Read" categories, the page's
-  title, domain, description, engagement metrics, and any note you wrote are sent to that
-  provider to generate the summary sentence. **The page's actual content is never sent** — only
-  the metadata listed above. You choose the provider and supply your own API key; Tab State has
-  no server of its own and no access to what you send.
+- **An OpenAI-compatible API or the Anthropic API**, configured by you in Settings. If you turn
+  one of these on, Tab State sends the following, and nothing else:
+  - *Per-tab summaries and the "deeper insight" in the detail view* (only for tabs in Deep Focus
+    or Partially Read, or when you click the insight button): the page's title, domain and
+    description, your engagement numbers (active time, scroll depth, copy/highlight counts), the
+    heading nearest where you stopped, and any note you wrote on the tab.
+  - *The session recap line*: the titles and domains of your tracked tabs, each with its
+    engagement label.
+  - *"Group related tabs"* (off by default, only when you click it): the titles and domains of
+    your open tabs.
+
+  **Never sent to a cloud provider:** the page's body text, the text you selected, and the
+  paragraph text near where you stopped. Those stay on your device (they are shown to you in the
+  detail view, and only an on-device model can use them). You choose the provider and supply your
+  own API key; Tab State has no server of its own and no access to what you send.
 
 If you use a local model server (e.g. Ollama) as your "API," nothing leaves your machine either.
 
@@ -50,8 +59,8 @@ If you use a local model server (e.g. Ollama) as your "API," nothing leaves your
 
 Tab State's use of any data obtained through a connected AI provider adheres to the
 [Chrome Web Store User Data Policy](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq),
-including the Limited Use requirements: data is used only to generate the summary sentence you
-asked for, is not sold, is not used for advertising, and is not used for any purpose unrelated to
+including the Limited Use requirements: data is used only to produce the summaries, recap,
+insights or grouping you asked for, is not sold, is not used for advertising, and is not used for any purpose unrelated to
 that single, disclosed feature.
 
 ## What Tab State does not do
