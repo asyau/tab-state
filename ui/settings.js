@@ -37,6 +37,7 @@ const THRESHOLD_FIELDS = [
   ['deepScrollMinMs', 't-deepScrollMinMs', 1000],
   ['partialScrollPct', 't-partialScrollPct', 1],
   ['partialScrollMinMs', 't-partialScrollMinMs', 1000],
+  ['interactedMinMs', 't-interactedMinMs', 1000],
 ];
 
 let settings;

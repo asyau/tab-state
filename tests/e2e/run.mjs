@@ -106,7 +106,7 @@ await docs.evaluate(() => {
   document.execCommand('copy');
 });
 await docs.locator('p').nth(20).click({ clickCount: 3 }); // triple-click selects a paragraph
-await sleep(1500);
+await sleep(30_000); // past interactedMinMs (30s), so the copy/highlight above actually forces Deep Focus
 
 // 2. Blog: skim 40% over ~17s -> Partially Read
 const blog = await open('/blog');

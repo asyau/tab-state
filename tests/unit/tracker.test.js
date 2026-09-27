@@ -164,7 +164,7 @@ test('ghost tabs: opened in the background, never focused', async () => {
 test('content telemetry: scroll, highlight and copy', async () => {
   const t = env.openTab({ url: 'https://docs.com/api', active: true });
   await tracker.onFocusMaybeChanged();
-  env.advance(8 * S);
+  env.advance(35 * S); // past interactedMinMs, so the copy below actually forces Deep Focus
   const anchor = { kind: 'code', heading: 'Authentication', snippet: 'curl -u sk_test' };
   await tracker.onContentMessage({ type: 'ts:scroll', url: t.url, pct: 64, anchor }, env.tab(t.id));
   await tracker.onContentMessage({ type: 'ts:scroll', url: t.url, pct: 40 }, env.tab(t.id));

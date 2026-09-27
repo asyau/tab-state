@@ -72,7 +72,7 @@ After pulling new changes, click the reload icon on the extension's card in `chr
 
 | Bucket | Rule (defaults, editable in Settings) |
 |---|---|
-| 🎯 Deep Focus | Copied or highlighted text, or 90s+ active, or 70%+ scrolled with 30s+ active |
+| 🎯 Deep Focus | Copied or highlighted text after 30s+ active, or 90s+ active on its own, or 70%+ scrolled with 30s+ active |
 | 👻 Ghost | Active for under 2s |
 | 📖 Partially Read | 15s+ active, or 25%+ scrolled with 5s+ active |
 | 👁️ Just Glanced | Everything else |

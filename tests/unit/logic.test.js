@@ -18,8 +18,15 @@ test('classify: spec examples land in the right bucket', () => {
   assert.equal(classify(rec({ activeMs: 60 * S, maxScrollPct: 40 })), 'partial', 'skimmed blog post');
   assert.equal(classify(rec({ activeMs: 120 * S, maxScrollPct: 30 })), 'deep', 'long read');
   assert.equal(classify(rec({ activeMs: 40 * S, maxScrollPct: 90 })), 'deep', 'read to the end');
-  assert.equal(classify(rec({ activeMs: 3 * S, highlights: 1 })), 'deep', 'highlight always counts');
-  assert.equal(classify(rec({ copies: 1 })), 'deep', 'copy counts even if never timed');
+  assert.equal(classify(rec({ activeMs: 40 * S, highlights: 1 })), 'deep', 'highlight after real dwell time counts');
+  assert.equal(classify(rec({ activeMs: 40 * S, copies: 1 })), 'deep', 'copy after real dwell time counts');
+});
+
+test('classify: a copy/highlight needs a minimum dwell time first, so a stray selection cannot fake Deep Focus', () => {
+  assert.equal(classify(rec({ activeMs: 3 * S, highlights: 1 })), 'glanced', 'a highlight seconds into a visit does not count yet');
+  assert.equal(classify(rec({ copies: 1 })), 'ghost', 'a copy with no real dwell time does not count either');
+  assert.equal(classify(rec({ activeMs: 29 * S, maxScrollPct: 28, highlights: 1 })), 'partial', 'just under the minimum: falls back to the normal duration/scroll rules');
+  assert.equal(classify(rec({ activeMs: 30 * S, highlights: 1 })), 'deep', 'right at the minimum: counts');
 });
 
 test('classify: gaps in the spec are covered', () => {
