@@ -174,6 +174,34 @@ $('#grouping-enabled').addEventListener('change', async (e) => {
   await saveSettings(settings);
 });
 
+// --- MCP server sync (local, off by default) --------------------------------------------------
+
+async function checkMcpStatus() {
+  const status = $('#mcp-status');
+  if (!settings.mcpSync?.enabled) { status.textContent = ''; return; }
+  status.textContent = 'Checking…';
+  try {
+    const res = await fetch(`http://127.0.0.1:${settings.mcpSync.port}/health`, { signal: AbortSignal.timeout(2000) });
+    status.textContent = res.ok ? '✅ Connected — the local server is running.' : `⚠️ Server responded with ${res.status}.`;
+  } catch {
+    status.textContent = '⚠️ Not reachable. Start it with `npm start` in mcp-server/ (see mcp-server/README.md).';
+  }
+}
+
+$('#mcp-enabled').addEventListener('change', async (e) => {
+  settings.mcpSync = { ...settings.mcpSync, enabled: e.target.checked };
+  await saveSettings(settings);
+  checkMcpStatus();
+});
+
+$('#mcp-port').addEventListener('change', async (e) => {
+  const port = Number(e.target.value);
+  settings.mcpSync = { ...settings.mcpSync, port: Number.isFinite(port) && port > 0 ? port : 8765 };
+  e.target.value = settings.mcpSync.port;
+  await saveSettings(settings);
+  checkMcpStatus();
+});
+
 // --- Daily check-list management --------------------------------------------------------------
 
 async function renderWatchlist() {
@@ -222,6 +250,9 @@ $('#clear').addEventListener('click', async () => {
   syncVisibility();
   fillThresholdFields();
   $('#grouping-enabled').checked = !!settings.grouping?.enabled;
+  $('#mcp-enabled').checked = !!settings.mcpSync?.enabled;
+  $('#mcp-port').value = settings.mcpSync?.port || 8765;
+  checkMcpStatus();
   renderNano();
   renderWatchlist();
 })();

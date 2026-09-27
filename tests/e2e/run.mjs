@@ -407,6 +407,45 @@ await dash.locator('#stats').click(); // blur saves the note
 await sleep(600);
 await bg(async () => chrome.storage.local.set({ watchlist: [] }));
 
+// --- MCP sync: real delivery to a real local listener, through the actual Settings UI ------------
+
+const mcpHits = [];
+const mcpListener = http.createServer((req, res) => {
+  if (req.method === 'GET' && req.url === '/health') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end('{"ok":true}');
+    return;
+  }
+  let body = '';
+  req.on('data', (c) => { body += c; });
+  req.on('end', () => { mcpHits.push(JSON.parse(body)); res.writeHead(200, { 'content-type': 'application/json' }); res.end('{"ok":true}'); });
+});
+await new Promise((r) => mcpListener.listen(0, '127.0.0.1', r));
+const mcpPort = mcpListener.address().port;
+
+await settings.bringToFront();
+await settings.fill('#mcp-port', String(mcpPort));
+await settings.locator('#mcp-port').dispatchEvent('change');
+await settings.check('#mcp-enabled');
+await sleep(300);
+await assertVisibleText(settings, '#mcp-status', 'Connected');
+
+// Sent from the dashboard page, not via bg()/sw.evaluate(): a service worker's own
+// chrome.runtime.sendMessage call is never delivered to its own onMessage listener in the same
+// context, so calling this from inside the SW itself would hang until "no receiving end" fires.
+await dash.evaluate(() => chrome.runtime.sendMessage({ type: 'ts:refresh' })); // trigger onTick() now, not on the real 30s alarm
+await sleep(500);
+// >=1, not ===1: the real 30s heartbeat alarm (TIMING.tickMinutes) keeps running throughout this
+// whole test, so by now it may have already ticked on its own and delivered a sync too — that's
+// a second legitimate POST, not a bug. What matters is that at least one carries real data.
+assert.ok(mcpHits.length >= 1, 'the extension actually POSTed to the local listener, not just flipped a flag');
+assert.ok(mcpHits.every((h) => h.tabs.some((t) => t.title === 'Auth API Reference')), 'real tracked-tab data was delivered');
+assert.match(mcpHits[0].recap, /Tracked \d+ tabs?/);
+
+await settings.uncheck('#mcp-enabled');
+await sleep(200);
+mcpListener.close();
+
 // --- Done --------------------------------------------------------------------------------------
 
 const relevant = errors.filter((e) => !/favicon|ERR_CONNECTION_REFUSED|11434/.test(e));

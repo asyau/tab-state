@@ -38,6 +38,9 @@ choose to connect an AI provider.
   you haven't opened yet today.
 - **Optional AI tab grouping.** Off by default. When you turn it on and click the button, it
   proposes groups, shows them to you, and only applies them if you confirm.
+- **Optional local MCP server.** Off by default. Lets Claude (or any MCP client) answer things like
+  *"what was I reading about X last week?"* from your tracked tabs — runs entirely on your machine.
+  See [`mcp-server/README.md`](mcp-server/README.md).
 
 <table>
   <tr>
@@ -134,6 +137,7 @@ scripts/package.mjs     builds the Chrome Web Store zip
 tests/unit              node:test with a fake chrome.* API
 tests/e2e               Playwright against the real extension in Chromium
 docs/                   store submission text, screenshots, promo images
+mcp-server/             optional local MCP server (see mcp-server/README.md)
 ```
 
 ## Development
@@ -165,9 +169,6 @@ checklist, and [`docs/launch-posts.md`](docs/launch-posts.md) for ready-to-post 
 
 - **Hosted "Pro" summaries** for people who'd rather not bring an API key (a small proxy plus a
   paywall). The extension side is already just another OpenAI-compatible endpoint.
-- **MCP server** so an assistant can answer "what was I reading last week?". A browser extension
-  can't host a server itself, so this needs a small companion process bridged with Chrome's Native
-  Messaging.
 - Learning from which tabs you flag, so it can suggest them.
 
 ## License

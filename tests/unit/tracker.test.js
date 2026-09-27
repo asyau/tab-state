@@ -383,6 +383,30 @@ test('a custom threshold saved in settings changes how the tracker classifies', 
 
 // --- Daily check-list -------------------------------------------------------------------------
 
+// --- MCP sync (opt-in, off by default) ------------------------------------------------------
+
+test('onTick syncs to the local MCP server only when mcpSync.enabled is true', async () => {
+  const calls = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => { calls.push({ url, init }); return { ok: true, status: 200 }; };
+  try {
+    env.openTab({ url: 'https://a.com/', active: true });
+    await tracker.onFocusMaybeChanged();
+
+    await tracker.onTick();
+    assert.equal(calls.length, 0, 'disabled by default: no network call at all');
+
+    await env.chrome.storage.local.set({ settings: { mcpSync: { enabled: true, port: 9111 } } });
+    await tracker.onTick();
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, 'http://127.0.0.1:9111/sync');
+    const body = JSON.parse(calls[0].init.body);
+    assert.equal(body.tabs.some((t) => t.url === 'https://a.com/'), true);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test('watchlist add/remove/list', async () => {
   assert.deepEqual((await tracker.getWatchlist()), []);
   const { watchlist } = await tracker.addWatch({ domain: 'Gmail.com', label: 'Gmail' });

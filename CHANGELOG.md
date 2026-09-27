@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Optional local MCP server (`mcp-server/`) so Claude or another MCP client can answer questions
+  like "what was I reading about X last week?" from your tracked tabs. Off by default; the
+  extension only syncs to it if you turn it on in Settings, and it never leaves your machine. See
+  [`mcp-server/README.md`](mcp-server/README.md).
+
 ## 1.0.0
 
 First public release.
