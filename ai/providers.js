@@ -75,9 +75,19 @@ export async function enableNano(onProgress) {
   return nanoAvailability();
 }
 
+// Human, actionable text for a non-'available' state — this is what a user actually sees (e.g. as
+// a dashboard toast: "nano: on-device AI needs a one-time download — enable it in Settings"), so
+// it needs to say what to do, not just restate the raw state name.
+const NANO_STATE_MESSAGES = {
+  downloadable: 'on-device AI needs a one-time download — enable it in Settings',
+  downloading: 'on-device AI is still downloading',
+  unavailable: 'on-device AI is not available on this device',
+  unsupported: 'this browser has no built-in on-device AI',
+};
+
 async function nanoRun(systemPrompt, userPrompt) {
   const state = await nanoAvailability();
-  if (state !== 'available') throw new Error(`On-device model is ${state}`);
+  if (state !== 'available') throw new Error(NANO_STATE_MESSAGES[state] || `on-device model is ${state}`);
   let base = nanoSessions.get(systemPrompt);
   if (!base) {
     base = await createNanoSession(systemPrompt);

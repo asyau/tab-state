@@ -452,7 +452,7 @@ $('#detail-insight-btn').addEventListener('click', async () => {
   try {
     const { text, source, errors } = await getInsight(detailRec, state.settings);
     $('#detail-insight').textContent = text;
-    if (source === 'template' && errors.length) showToast(errors[0]);
+    if (source === 'template' && errors.length) showToast(errors[0], { ms: 6000 });
   } catch (err) {
     showError(err);
   } finally {

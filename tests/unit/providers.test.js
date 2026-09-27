@@ -42,7 +42,14 @@ test('auto falls back to the template when there is no on-device model', async (
   const out = await summarize(record, mergeSettings({}));
   assert.equal(out.source, 'template');
   assert.match(out.text, /^Spent 2m reading 80%/);
-  assert.match(out.errors[0], /nano: On-device model is unsupported/);
+  assert.match(out.errors[0], /nano: this browser has no built-in on-device AI/);
+});
+
+test('nano surfaces an actionable message, not the raw state, when a download is needed', async () => {
+  globalThis.LanguageModel = { availability: async () => 'downloadable' };
+  const out = await summarize(record, mergeSettings({}));
+  assert.equal(out.source, 'template');
+  assert.match(out.errors[0], /nano: on-device AI needs a one-time download — enable it in Settings/);
 });
 
 test('OpenAI-compatible request shape (works for Ollama with no key)', async () => {
