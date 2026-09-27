@@ -165,6 +165,10 @@ See [`docs/chrome-web-store-submission.md`](docs/chrome-web-store-submission.md)
 listing text, the single-purpose declaration, per-permission justifications and the asset
 checklist, and [`docs/launch-posts.md`](docs/launch-posts.md) for ready-to-post announcements.
 
+See [`docs/verification-notes.md`](docs/verification-notes.md) for exactly what's been run and
+confirmed versus reviewed-but-not-live-tested (Gemini Nano, cloud API providers, Windows/Linux) —
+worth reading before you publish.
+
 ## Roadmap
 
 - **Hosted "Pro" summaries** for people who'd rather not bring an API key (a small proxy plus a
