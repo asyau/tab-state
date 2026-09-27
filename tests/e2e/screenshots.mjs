@@ -8,6 +8,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { dismissWelcomeTab } from './welcome-tab.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = process.env.E2E_OUT || path.join(ROOT, 'docs/screenshots');
@@ -76,6 +77,7 @@ let [sw] = context.serviceWorkers();
 if (!sw) sw = await context.waitForEvent('serviceworker');
 const extId = new URL(sw.url()).host;
 const DASH = `chrome-extension://${extId}/ui/dashboard.html`;
+await dismissWelcomeTab(sw); // else it can open over the first page and steal its reading time
 const bg = (fn, arg) => sw.evaluate(fn, arg);
 
 async function open(p, { ms = 400 } = {}) {

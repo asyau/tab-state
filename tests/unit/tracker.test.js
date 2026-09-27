@@ -466,3 +466,41 @@ test('isCheckedToday reflects real activity on that domain since local midnight'
   assert.equal(tracker.isCheckedToday('mail.example.com', env.now), true);
   assert.equal(tracker.isCheckedToday('other.example.com', env.now), false);
 });
+
+// A tab can already be active and focused before the service worker (and so the tracker) exists:
+// after a browser restart, an extension update, or Chrome stopping an idle worker. No activation
+// event will ever arrive for it, so worker start itself must start that tab's segment.
+test('a tab already active when the tracker initializes is tracked from worker start', async () => {
+  // Previous browser session: some history for this URL.
+  const before = env.openTab({ url: 'https://docs.example/auth', active: true });
+  await tracker.onTabCreated(before);
+  await focusTab(before.id);
+  env.advance(10 * S);
+  await tracker.onTick();
+
+  // Browser restarts with that page already in front; the worker starts fresh, and nothing but
+  // worker start happens before the user reads for 40s (heartbeats only, no focus events).
+  const [tab] = env.restartBrowser(['https://docs.example/auth']);
+  simulateWorkerRestart();
+  await tracker.onWorkerStart();
+  await readFor(tab, 40 * S);
+
+  const rec = await recordFor('https://docs.example/auth');
+  assert.equal(rec.tabId, tab.id, 're-linked to the new tab id');
+  assert.ok(rec.activeSince != null, 'segment running for the tab that was already in front');
+  const total = effectiveActiveMs(rec, env.now);
+  assert.ok(total >= 49 * S && total <= 51 * S, `10s before + 40s after restart, got ${total}ms`);
+});
+
+test('fresh install: the tab already in front is tracked from worker start, with no events at all', async () => {
+  const tab = env.openTab({ url: 'https://news.example/story', active: true }); // open before install
+  simulateWorkerRestart();
+  await tracker.onWorkerStart();
+  env.advance(20 * S);
+  await tracker.onTick();
+
+  const rec = await recordFor('https://news.example/story');
+  assert.ok(rec, 'record created for the pre-existing tab');
+  assert.ok(effectiveActiveMs(rec, env.now) >= 20 * S, 'its time counts from worker start');
+  assert.equal(tab.id, rec.tabId);
+});

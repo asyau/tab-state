@@ -16,6 +16,9 @@
   touch); Esc closes it. Card actions are now quiet icon+label buttons (Jump to tab · Note ·
   Watch · ✕) that fit on one line. Respects `prefers-reduced-motion`. Each board column scrolls
   on its own; the same rows are used in Recently closed, Follow Up, and History.
+- The tab in front of you is now picked up the moment the extension's background worker starts
+  (browser restart, extension update, or Chrome waking the worker), instead of waiting for the
+  next tab event or the 30s heartbeat.
 - Deep Focus now requires the tab to have been active for at least 30s (editable) before a
   copy/highlight alone can force that classification — previously any highlight did, however
   brief the visit, including an easily-accidental one.

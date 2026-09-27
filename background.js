@@ -32,6 +32,11 @@ chrome.tabs.onReplaced.addListener((added, removed) => tracker.onTabReplaced(add
 
 chrome.idle.setDetectionInterval(TIMING.idleSeconds);
 
+// Whatever woke this worker, the tab in front of the user may have become active before it
+// existed (browser restart, extension update, worker stopped while idle) with no activation event
+// still to come. Reconcile right away rather than waiting for the next event or the 30s heartbeat.
+tracker.onWorkerStart().catch(logError);
+
 // --- Heartbeat --------------------------------------------------------------
 
 async function ensureAlarm() {
@@ -65,7 +70,7 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
 
 chrome.runtime.onStartup.addListener(() => {
   ensureAlarm().catch(logError);
-  tracker.onFocusMaybeChanged().catch(logError);
+  tracker.onFocusMaybeChanged().catch(logError); // redundant with onWorkerStart above; harmless
 });
 
 // --- Toolbar button: open (or focus) the dashboard ----------------------------

@@ -9,6 +9,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { dismissWelcomeTab } from './welcome-tab.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = process.env.E2E_OUT || path.join(ROOT, 'tests/e2e/output');
@@ -34,6 +35,7 @@ const context = await chromium.launchPersistentContext('', {
 let [sw] = context.serviceWorkers();
 if (!sw) sw = await context.waitForEvent('serviceworker');
 const extId = new URL(sw.url()).host;
+await dismissWelcomeTab(sw); // else it can open over the first site and steal its reading time
 const errors = [];
 sw.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 

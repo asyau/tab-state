@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { dismissWelcomeTab } from './welcome-tab.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = process.env.E2E_OUT || path.join(ROOT, 'tests/e2e/output');
@@ -84,8 +85,10 @@ async function open(p) {
   return page;
 }
 
+// The install-time welcome tab would otherwise open over the first page and steal its focus.
+await dismissWelcomeTab(sw);
+
 // Is focus detected at all in this browser mode?
-await sleep(1000);
 const focusProbe = await bg(async () => ({
   idle: await chrome.idle.queryState(60),
   win: await chrome.windows.getLastFocused({ windowTypes: ['normal'] }).then((w) => ({ focused: w.focused })).catch((e) => String(e)),
