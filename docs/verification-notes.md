@@ -74,8 +74,12 @@ sample tab" button in Settings is the fastest way to confirm this against a live
 
 ## Windows / Linux Chrome
 
-Not tested on either OS this session (no such machine available here) — this is a static read-
-through of the whole codebase, not a live run.
+Not tested in a real Chrome browser on either OS this session (no such machine available here) —
+the Chrome-specific parts below are a static read-through of the codebase, not a live run. One
+real data point that *is* live, though not a browser test: `.github/workflows/test.yml` runs the
+full unit suite (`npm test`) on `ubuntu-latest`/Node 20 on every push, so the underlying JS logic
+(everything under `lib/`, `ai/`) is genuinely exercised on Linux, continuously — just not inside
+an actual Linux Chrome loading the extension.
 
 - The extension itself (`manifest.json`, `background.js`, `content.js`, `lib/`, `ui/`, `ai/`) has
   no OS-specific branches, hardcoded paths, or platform sniffing anywhere in it — it only touches
