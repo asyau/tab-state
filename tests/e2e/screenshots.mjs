@@ -74,7 +74,7 @@ await docs.evaluate(() => {
   getSelection().addRange(range);
   document.execCommand('copy');
 });
-await sleep(300);
+await sleep(29_000); // past interactedMinMs (30s), so the copy above actually forces Deep Focus
 
 // Ghost, but noted: opened Isaac Sim, barely looked, don't want to lose it (mirrors the exact
 // "I have Isaac Sim open, want to learn it later" scenario this feature is built for).

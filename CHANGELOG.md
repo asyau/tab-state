@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- **Full history, kept forever.** Closed tabs are no longer deleted after 7 days (or 1 hour for
+  low-engagement ones) — everything's kept, browsable day by day on a new History page. The one
+  exception: an explicitly Purged tab is still cleaned up after its undo window. Needs the new
+  `unlimitedStorage` permission, since `chrome.storage.local`'s default 10MB cap could otherwise
+  be hit by an active user over months of use.
+- **Compact dashboard cards.** Cards collapse to a single-line row by default and expand on
+  hover or keyboard focus, so far more tabs fit on screen without scrolling; each column's list
+  now scrolls independently instead of the whole page.
+- Deep Focus now requires the tab to have been active for at least 30s (editable) before a
+  copy/highlight alone can force that classification — previously any highlight did, however
+  brief the visit, including an easily-accidental one.
 - Optional local MCP server (`mcp-server/`) so Claude or another MCP client can answer questions
   like "what was I reading about X last week?" from your tracked tabs. Off by default; the
   extension only syncs to it if you turn it on in Settings, and it never leaves your machine. See

@@ -178,16 +178,42 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
   font-weight: 600;
 }
 .col-hint { margin: 2px 0 10px; color: var(--muted); font-size: 12.5px; }
-.cards { display: flex; flex-direction: column; gap: 8px; }
+
+/* The list itself scrolls, independent of the page, so the board's header/recap/checklist stay
+   put and you're never scrolling the whole page just to see more tabs — only this list does.
+   180px is roughly the topbar + recap + column header; tune if those sections grow. */
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px; /* keeps the scrollbar from sitting flush against card borders */
+}
 .empty { padding: 14px 6px; color: var(--muted); font-size: 13px; text-align: center; }
 
+/* Collapsed to a single compact row by default — favicon + title only — and expands to the full
+   card on hover *or* keyboard focus landing anywhere inside it (:focus-within, not just :hover,
+   so this stays fully keyboard-operable: tabbing onto the title/meta/any button expands the card
+   before that element becomes the visible focus target). A screen reader's own virtual-cursor
+   browsing can still reach clipped content independent of visual/focus state — a known trade-off
+   of this pattern — but everything here was already reachable through the existing "view details"
+   modal (role="button" on .meta, Enter/Space handled) as a fully accessible alternative. */
 .card {
   min-width: 0;
-  padding: 10px 12px;
+  padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow);
+  max-height: 34px;
+  overflow: hidden;
+  transition: max-height 0.15s ease, padding 0.15s ease;
+}
+.card:hover, .card:focus-within {
+  max-height: 800px;
+  padding: 10px 12px;
 }
 .card.active-now { border-color: var(--accent); }
 .card-head { display: flex; align-items: flex-start; gap: 8px; }
@@ -203,6 +229,12 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
   text-align: left;
   cursor: pointer;
   overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card:hover .title, .card:focus-within .title {
+  white-space: normal;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -262,6 +294,15 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 .closed h2 { margin-bottom: 10px; font-size: 14.5px; }
 .closed-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
 @media (max-width: 640px) { .closed { padding: 0 16px 24px; } }
+
+/* --- History -------------------------------------------------------------- */
+
+.history-days { display: flex; flex-direction: column; gap: 16px; padding: 20px 24px; }
+.history-day { min-width: 0; }
+/* One day's list can hold many tabs; each day scrolls on its own rather than growing the page
+   without bound, same reasoning as .cards on the board. */
+.history-day .cards { max-height: 60vh; }
+@media (max-width: 640px) { .history-days { padding: 16px; } }
 
 /* --- Toast -------------------------------------------------------------- */
 

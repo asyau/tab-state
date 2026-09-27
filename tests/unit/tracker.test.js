@@ -348,7 +348,7 @@ test('a straggling tab event during purge does not resurrect a duplicate record'
   assert.equal(all.filter((r) => !r.closed).length, 1, 'tracking resumes for a new tab');
 });
 
-test('prune drops old low-value closed records but keeps deep ones for a week', async () => {
+test('prune keeps closed records forever, low-value or not, for the History page', async () => {
   const t1 = env.openTab({ url: 'https://low.com/', active: true });
   await tracker.onFocusMaybeChanged();
   env.advance(5 * S);
@@ -360,12 +360,22 @@ test('prune drops old low-value closed records but keeps deep ones for a week', 
 
   env.advance(2 * 3600 * S);
   await tracker.onTick();
-  let urls = (await allRecords()).map((r) => r.url);
-  assert.deepEqual(urls, ['https://deep.com/']);
-
-  env.advance(8 * 24 * 3600 * S);
+  env.advance(60 * 24 * 3600 * S); // 60 days later
   await tracker.onTick();
-  assert.equal((await allRecords()).length, 0);
+  const urls = (await allRecords()).map((r) => r.url).sort();
+  assert.deepEqual(urls, ['https://deep.com/', 'https://low.com/'], 'nothing aged out, low-value or not');
+});
+
+test('prune still cleans up an explicitly purged tab after the undo window, forever-retention or not', async () => {
+  const t = env.openTab({ url: 'https://purge-me.com/' });
+  await tracker.onTabCreated(t);
+  const id = (await allRecords()).find((r) => r.url === t.url).id;
+  await tracker.purge([id]);
+  assert.ok((await allRecords()).some((r) => r.id === id), 'kept for undo right after purging');
+
+  env.advance(2 * 3600 * S); // past the 1-hour purge safety margin
+  await tracker.onTick();
+  assert.ok(!(await allRecords()).some((r) => r.id === id), 'purge is a "forget this" action, so it still ages out');
 });
 
 test('non-web pages are not tracked', async () => {

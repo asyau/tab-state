@@ -5,7 +5,7 @@
   "homepage_url": "https://github.com/asyau/tab-state",
   "description": "Remembers how you used each tab (glanced, skimmed, deep focus, never opened) and where you stopped.",
   "minimum_chrome_version": "116",
-  "permissions": ["tabs", "tabGroups", "storage", "idle", "alarms", "scripting", "favicon"],
+  "permissions": ["tabs", "tabGroups", "storage", "unlimitedStorage", "idle", "alarms", "scripting", "favicon"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js", "type": "module" },
   "content_scripts": [

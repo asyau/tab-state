@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tab State — History</title>
+  <link rel="icon" href="../icons/icon32.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="../icons/icon48.png" alt="" width="28" height="28">
+      <div>
+        <h1>History</h1>
+        <p id="stats" class="muted">Loading…</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <a href="dashboard.html" class="btn subtle">← Board</a>
+      <a href="settings.html" class="btn subtle">Settings</a>
+    </div>
+  </header>
+
+  <main id="days" class="history-days"></main>
+  <p id="empty" class="empty" hidden>Nothing tracked yet — browse a bit, then check back here.</p>
+
+  <template id="card-tpl">
+    <article class="card">
+      <div class="card-head">
+        <img class="favicon" alt="" width="16" height="16">
+        <button class="title" type="button"></button>
+      </div>
+      <div class="meta muted"></div>
+      <div class="badges"></div>
+      <p class="summary"><span class="summary-text"></span> <span class="source"></span></p>
+      <p class="note-display" hidden></p>
+      <div class="card-actions">
+        <button class="btn small jump" type="button">Jump to tab</button>
+      </div>
+    </article>
+  </template>
+
+  <div id="detail-backdrop" class="modal-backdrop" hidden></div>
+  <div id="detail-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="detail-title">
+    <button id="detail-close" class="modal-close" type="button" aria-label="Close">✕</button>
+    <div class="detail-preview">
+      <img id="detail-favicon" class="detail-favicon" alt="">
+      <div class="detail-heading">
+        <h2 id="detail-title"></h2>
+        <p id="detail-meta" class="muted"></p>
+        <p id="detail-url" class="detail-url muted"></p>
+      </div>
+    </div>
+    <div id="detail-badges" class="badges"></div>
+
+    <section class="detail-section">
+      <h3>Summary</h3>
+      <p id="detail-insight" class="detail-insight"></p>
+    </section>
+
+    <section id="detail-anchor-section" class="detail-section" hidden>
+      <h3>Where you stopped</h3>
+      <p id="detail-anchor"></p>
+    </section>
+
+    <section id="detail-selection-section" class="detail-section" hidden>
+      <h3>Last selected text</h3>
+      <p id="detail-selection"></p>
+    </section>
+
+    <section id="detail-note-section" class="detail-section" hidden>
+      <h3>📌 Your note</h3>
+      <p id="detail-note"></p>
+    </section>
+
+    <div class="card-actions">
+      <button id="detail-jump" class="btn primary small" type="button">Jump to tab</button>
+    </div>
+  </div>
+
+  <script type="module" src="history.js"></script>
+</body>
+</html>

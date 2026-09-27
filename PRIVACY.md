@@ -26,9 +26,11 @@ engagement signals above.
 ## Where it's stored
 
 Everything above is stored **locally in your browser**, using Chrome's built-in
-`chrome.storage.local` API. Nothing is uploaded anywhere by default. Closed tabs with low
-engagement are forgotten automatically after about an hour; all closed-tab records are forgotten
-after 7 days. You can delete everything at any time from **Settings → Delete all tracked data**.
+`chrome.storage.local` API. Nothing is uploaded anywhere by default. Your tab history is kept
+indefinitely — see it day by day on the **History** page — so nothing is silently forgotten. The
+one exception: a tab you explicitly **Purge** is deleted about an hour later (long enough to
+still Undo), since purging is a deliberate "forget this" action. You can delete everything at any
+time from **Settings → Delete all tracked data**.
 
 ## When data leaves your device
 

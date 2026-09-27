@@ -30,6 +30,9 @@ choose to connect an AI provider.
 - **Purge with a safety net.** Close every Ghost and Glanced tab in one click, with a confirm
   step and a 30-second undo. Pinned tabs, the tab you're on, and anything with a note are never
   touched.
+- **Full history, kept forever.** Every tab you've ever tracked, grouped by day, on its own
+  History page — not just the current board. (The one exception: a tab you explicitly Purge is
+  forgotten about an hour later.)
 - **Follow-up notes.** Write *"want to actually learn this"* on a card and Tab State will never
   suggest closing it, no matter how little you looked at it.
 - **Session recap.** One line summarizing your whole session: what you focused on and what you
@@ -144,6 +147,7 @@ lib/{store,template,config,url,format}.js
 ai/providers.js         nano / OpenAI-compatible / Anthropic behind one interface
 ai/prompt.js            what is (and is not) sent to a model
 ui/dashboard.*          the board, detail view, recap, check-list
+ui/history.*            every tracked tab ever, grouped by day
 ui/settings.*           provider, thresholds, grouping toggle, data controls
 scripts/package.mjs     builds the Chrome Web Store zip
 tests/unit              node:test with a fake chrome.* API
