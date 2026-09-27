@@ -30,12 +30,36 @@ const PAGES = {
   '/gmail': `<title>Inbox — Gmail</title><meta name="description" content="Your email, organized."><h1>Inbox</h1>${para(3)}`,
 };
 
+// Each fake page carries the real site's favicon, so the screenshots show what the dashboard
+// looks like with real tabs (the extension reads icons from Chrome's own favicon cache, which
+// fills in as pages load). Fetched once at startup; offline, pages just have no icon (a globe).
+// The recipe page deliberately stays icon-less: no real site should be the "clickbait" example.
+const FAVICON_DOMAINS = {
+  '/docs': 'stripe.com', '/rust': 'rust-lang.org', '/isaac': 'nvidia.com', '/thread': 'reddit.com',
+  '/newsletter': 'substack.com', '/gmail': 'mail.google.com',
+};
+const favicons = {};
+await Promise.all(Object.entries(FAVICON_DOMAINS).map(async ([p, domain]) => {
+  try {
+    const res = await fetch(`https://www.google.com/s2/favicons?domain=${domain}&sz=64`, { signal: AbortSignal.timeout(8000) });
+    if (res.ok) favicons[p] = Buffer.from(await res.arrayBuffer());
+  } catch { /* offline: no icon for this page */ }
+}));
+console.log(`favicons: ${Object.keys(favicons).length}/${Object.keys(FAVICON_DOMAINS).length} fetched`);
+
 const server = http.createServer((req, res) => {
   const p = req.url.split('?')[0];
+  if (p.startsWith('/icon')) {
+    const icon = favicons[p.slice(5)];
+    res.writeHead(icon ? 200 : 404, { 'content-type': 'image/png' });
+    res.end(icon);
+    return;
+  }
   if (p === '/favicon.ico') { res.writeHead(204); res.end(); return; }
   const body = PAGES[p];
+  const iconLink = favicons[p] ? `<link rel="icon" type="image/png" href="/icon${p}">` : '';
   res.writeHead(body ? 200 : 404, { 'content-type': 'text/html; charset=utf-8' });
-  res.end(body ? `<!doctype html><html><body style="font:16px/1.6 sans-serif;max-width:700px;margin:auto">${body}</body></html>` : 'nope');
+  res.end(body ? `<!doctype html><html><head>${iconLink}</head><body style="font:16px/1.6 sans-serif;max-width:700px;margin:auto">${body}</body></html>` : 'nope');
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const BASE = `http://127.0.0.1:${server.address().port}`;

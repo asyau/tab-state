@@ -25,6 +25,17 @@
   [`mcp-server/README.md`](mcp-server/README.md). For Claude Desktop it can be packed into a
   one-click `.mcpb` installer (`cd mcp-server && npm run build:mcpb`) — no npm install or config
   editing on the user's side.
+- **Claude Code + Codex plugin** (`plugins/tab-state/`), installable straight from this repo
+  (`/plugin marketplace add asyau/tab-state`, `codex plugin marketplace add asyau/tab-state`). One
+  folder serves both: the MCP server bundled into a single file (Node 18+, no `npm install`) plus
+  a `tab-history` skill. CI checks the bundle is rebuilt whenever the server changes.
+- **ChatGPT support via remote mode** (`npm run remote` in `mcp-server/`): the same read-only
+  tools over Streamable HTTP on a separate local port, behind a random 256-bit token URL, for you
+  to expose with a tunnel. The extension's sync endpoint is never served there.
+- MCP server: several assistants can now run at once — a second copy shares the sync port's data
+  instead of exiting, and takes the port over if the first one quits.
+- Store screenshots now show real site favicons (the extension itself always used Chrome's
+  favicon cache for real icons; the test pages just didn't have any).
 - Optional self-hosted "Tab State Pro" tier (`pro-proxy/`): a new hosted provider that needs no
   API key, gated by an ExtensionPay subscription, backed by a Cloudflare Worker you deploy
   yourself. See [`pro-proxy/README.md`](pro-proxy/README.md), including its security model.

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "tab-state",
+  "version": "1.0.0",
+  "description": "Ask your AI what you were reading: search and recap your Chrome tab history from the Tab State extension (reading time, scroll depth, where you stopped). Runs entirely on your machine.",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Tab State",
+        "category": "Productivity"
+      }
+    }
+  }
+}

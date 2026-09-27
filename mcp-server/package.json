@@ -4,14 +4,21 @@
   "private": true,
   "type": "module",
   "description": "Local MCP server exposing your Tab State reading history to Claude and other MCP clients. Runs entirely on your machine.",
-  "bin": { "tab-state-mcp": "./server.mjs" },
+  "bin": {
+    "tab-state-mcp": "./server.mjs"
+  },
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test test/*.test.js",
-    "build:mcpb": "node scripts/build-mcpb.mjs"
+    "build:mcpb": "node scripts/build-mcpb.mjs",
+    "build:plugin": "node scripts/build-plugin.mjs",
+    "remote": "node server.mjs --remote"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.1",
     "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12"
   }
 }

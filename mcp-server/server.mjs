@@ -12,18 +12,27 @@
 //
 //   node server.mjs                 (default sync port 8765)
 //   TAB_STATE_MCP_PORT=9000 node server.mjs
+//   node server.mjs --remote        (for ChatGPT: see "Remote mode" below and the README)
+//
+// Several MCP clients (Claude Desktop, Claude Code, Codex...) may each start their own copy. Only
+// one can own the sync port; the others notice a Tab State server already has it and just serve
+// tools, reading the same data file the first one writes. So any number of clients can coexist.
 
 import http from 'node:http';
-import { realpathSync } from 'node:fs';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { chmodSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import * as z from 'zod';
 import {
   validatePayload, load, save, listTabs, searchTabs, getTab, getRecap, DEFAULT_DATA_DIR,
 } from './store.mjs';
 
 const PORT = Number(process.env.TAB_STATE_MCP_PORT) || 8765;
+const REMOTE_PORT = Number(process.env.TAB_STATE_MCP_REMOTE_PORT) || 8766;
 const HOST = '127.0.0.1'; // never 0.0.0.0: this must not be reachable from the network
 
 // --- Sync endpoint: the extension POSTs its snapshot here -------------------------------------
@@ -126,25 +135,161 @@ export function createMcpServer({ dataDir } = {}) {
   return mcp;
 }
 
+// --- Remote mode (ChatGPT) ---------------------------------------------------------------------
+//
+// ChatGPT only talks to MCP servers over HTTPS on the public internet — it can't launch a local
+// process the way Claude or Codex do. Remote mode serves the same tools over MCP's Streamable
+// HTTP transport so a tunnel (cloudflared, ngrok, OpenAI's Secure MCP Tunnel) can expose them.
+//
+// This is your browsing history, so it's locked down:
+//  - A separate listener (default 127.0.0.1:8766) that serves ONLY the MCP endpoint — the sync
+//    port is never what you tunnel, so nobody on the internet can overwrite your data.
+//  - The endpoint path embeds a random 256-bit token: /mcp/<token>. Every other path is a 404,
+//    and the token is compared in constant time. `Authorization: Bearer <token>` on /mcp works
+//    too, for clients that support a token field.
+//  - Read-only tools; still bound to 127.0.0.1 — only the tunnel you run can reach it.
+
+export function loadOrCreateToken(dir = DEFAULT_DATA_DIR) {
+  const file = path.join(dir, 'remote-token');
+  try {
+    const t = readFileSync(file, 'utf8').trim();
+    if (t.length >= 32) return t;
+  } catch { /* create below */ }
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const t = randomBytes(32).toString('base64url');
+  writeFileSync(file, `${t}\n`, { mode: 0o600 });
+  chmodSync(file, 0o600);
+  return t;
+}
+
+function tokenMatches(given, expected) {
+  const a = Buffer.from(String(given));
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+export function createRemoteServer({ token, dataDir } = {}) {
+  if (!token || token.length < 32) throw new Error('remote mode needs a token of at least 32 characters');
+  return http.createServer(async (req, res) => {
+    const url = new URL(req.url, 'http://localhost');
+    const bearer = /^Bearer\s+(.+)$/i.exec(req.headers.authorization || '')?.[1];
+    const pathToken = url.pathname.startsWith('/mcp/') ? url.pathname.slice(5) : null;
+    const authorized = (pathToken != null && tokenMatches(pathToken, token))
+      || (url.pathname === '/mcp' && bearer != null && tokenMatches(bearer, token));
+    if (!authorized) {
+      res.writeHead(404, { 'content-type': 'application/json' }).end('{"error":"not found"}');
+      return;
+    }
+    if (req.method !== 'POST') { // stateless server: no SSE stream to resume, no session to delete
+      res.writeHead(405, { 'content-type': 'application/json', allow: 'POST' })
+        .end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed' }, id: null }));
+      return;
+    }
+    let body = '';
+    for await (const chunk of req) {
+      body += chunk;
+      if (body.length > 1_000_000) { res.writeHead(413).end(); return; }
+    }
+    let parsed;
+    try { parsed = JSON.parse(body); } catch {
+      res.writeHead(400, { 'content-type': 'application/json' })
+        .end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32700, message: 'Parse error' }, id: null }));
+      return;
+    }
+    // Stateless: a fresh server + transport per request, so there's no session state to leak
+    // or pile up between requests.
+    const mcp = createMcpServer({ dataDir });
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+    res.on('close', () => { transport.close(); mcp.close(); });
+    try {
+      await mcp.connect(transport);
+      await transport.handleRequest(req, res, parsed);
+    } catch (err) {
+      if (!res.headersSent) res.writeHead(500).end();
+      console.error('tab-state-mcp: remote request failed', err);
+    }
+  });
+}
+
+/** Resolves true if a Tab State server already answers on this port (another client's copy). */
+async function isTabStateServer(port) {
+  try {
+    const res = await fetch(`http://${HOST}:${port}/health`, { signal: AbortSignal.timeout(1500) });
+    return res.ok && (await res.json())?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+function listen(server, port) {
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, HOST, resolve);
+  });
+}
+
 // --- Entry point ---------------------------------------------------------------------------
 
 async function main() {
-  const syncServer = createSyncServer();
-  await new Promise((resolve, reject) => {
-    syncServer.once('error', reject);
-    syncServer.listen(PORT, HOST, resolve);
-  }).catch((err) => {
-    console.error(`tab-state-mcp: could not listen on ${HOST}:${PORT} (${err.code === 'EADDRINUSE' ? 'already in use — set TAB_STATE_MCP_PORT to another port' : err.message})`);
-    process.exit(1);
-  });
-  console.error(`tab-state-mcp: sync endpoint listening on http://${HOST}:${PORT} (data: ${DEFAULT_DATA_DIR})`);
+  const remote = process.argv.includes('--remote') || process.env.TAB_STATE_MCP_REMOTE === '1';
 
-  const mcp = createMcpServer();
-  await mcp.connect(new StdioServerTransport());
-  console.error('tab-state-mcp: MCP server connected over stdio');
+  const syncServer = createSyncServer();
+  let ownsSync = true;
+  try {
+    await listen(syncServer, PORT);
+    console.error(`tab-state-mcp: sync endpoint listening on http://${HOST}:${PORT} (data: ${DEFAULT_DATA_DIR})`);
+  } catch (err) {
+    if (err.code === 'EADDRINUSE' && await isTabStateServer(PORT)) {
+      ownsSync = false; // another client's copy receives syncs; we read the same data file
+      console.error(`tab-state-mcp: another Tab State server already owns port ${PORT} — sharing its data (${DEFAULT_DATA_DIR})`);
+      // If that copy's client quits, take the port over so syncs keep landing somewhere.
+      const retry = setInterval(async () => {
+        try {
+          await listen(syncServer, PORT);
+          ownsSync = true;
+          clearInterval(retry);
+          console.error(`tab-state-mcp: took over the sync endpoint on port ${PORT}`);
+        } catch { /* still owned by another copy */ }
+      }, 30_000);
+      retry.unref();
+    } else {
+      console.error(`tab-state-mcp: could not listen on ${HOST}:${PORT} (${err.code === 'EADDRINUSE' ? 'already in use by something else — set TAB_STATE_MCP_PORT to another port' : err.message})`);
+      process.exit(1);
+    }
+  }
+
+  let remoteServer = null;
+  if (remote) {
+    const token = process.env.TAB_STATE_MCP_TOKEN || loadOrCreateToken();
+    remoteServer = createRemoteServer({ token });
+    try {
+      await listen(remoteServer, REMOTE_PORT);
+    } catch (err) {
+      console.error(`tab-state-mcp: could not start remote mode on ${HOST}:${REMOTE_PORT} (${err.message}) — set TAB_STATE_MCP_REMOTE_PORT`);
+      process.exit(1);
+    }
+    console.error([
+      '',
+      'tab-state-mcp: remote mode (for ChatGPT) is on.',
+      `  Local endpoint:  http://${HOST}:${REMOTE_PORT}/mcp/${token}`,
+      `  1. Expose ONLY this port over HTTPS, e.g.:  cloudflared tunnel --url http://${HOST}:${REMOTE_PORT}`,
+      `  2. In ChatGPT (developer mode) add an app with URL  https://<your-tunnel-host>/mcp/${token}`,
+      '     and authentication "No Authentication" — the token in the path is the secret; don\'t share it.',
+      '  Stop this process (Ctrl+C) to take it offline. Delete ~/.tab-state-mcp/remote-token to rotate the token.',
+      '',
+    ].join('\n'));
+  } else {
+    const mcp = createMcpServer();
+    await mcp.connect(new StdioServerTransport());
+    console.error('tab-state-mcp: MCP server connected over stdio');
+  }
 
   for (const sig of ['SIGINT', 'SIGTERM']) {
-    process.on(sig, () => { syncServer.close(); process.exit(0); });
+    process.on(sig, () => {
+      if (ownsSync) syncServer.close();
+      remoteServer?.close();
+      process.exit(0);
+    });
   }
 }
 

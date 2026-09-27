@@ -1,0 +1,20 @@
+{
+  "name": "tab-state",
+  "interface": {
+    "displayName": "Tab State"
+  },
+  "plugins": [
+    {
+      "name": "tab-state",
+      "source": {
+        "source": "local",
+        "path": "./plugins/tab-state"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

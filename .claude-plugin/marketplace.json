@@ -1,0 +1,19 @@
+{
+  "name": "tab-state",
+  "owner": {
+    "name": "asyau",
+    "url": "https://github.com/asyau"
+  },
+  "metadata": {
+    "description": "Tab State: your Chrome reading history, available to Claude."
+  },
+  "plugins": [
+    {
+      "name": "tab-state",
+      "source": "./plugins/tab-state",
+      "description": "Ask your AI what you were reading: search and recap your Chrome tab history from the Tab State extension (reading time, scroll depth, where you stopped). Runs entirely on your machine.",
+      "version": "1.0.0",
+      "category": "productivity"
+    }
+  ]
+}

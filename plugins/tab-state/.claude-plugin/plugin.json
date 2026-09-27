@@ -1,0 +1,19 @@
+{
+  "name": "tab-state",
+  "version": "1.0.0",
+  "description": "Ask your AI what you were reading: search and recap your Chrome tab history from the Tab State extension (reading time, scroll depth, where you stopped). Runs entirely on your machine.",
+  "author": {
+    "name": "asyau",
+    "url": "https://github.com/asyau"
+  },
+  "homepage": "https://github.com/asyau/tab-state",
+  "repository": "https://github.com/asyau/tab-state",
+  "license": "MIT",
+  "keywords": [
+    "tabs",
+    "browser-history",
+    "chrome",
+    "mcp",
+    "productivity"
+  ]
+}
