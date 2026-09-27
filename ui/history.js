@@ -13,6 +13,7 @@ import { RECORD_PREFIX } from '../lib/store.js';
 import { templateSummary, describeAnchor } from '../lib/template.js';
 import { domainOf } from '../lib/url.js';
 import { loadSettings } from '../lib/settings.js';
+import { initCardPeek, focusInCard } from './card-peek.js';
 
 const $ = (sel) => document.querySelector(sel);
 let settings = null;
@@ -129,16 +130,21 @@ function buildCard(rec, now) {
   if (rec.highlights) badges.append(badge(`🖍 ${rec.highlights}`, 'Highlighted text'));
   if (rec.note) badges.append(badge('📌 note'));
 
+  const stat = node.querySelector('.row-stat');
+  if (bucket === 'ghost') stat.textContent = 'unread';
+  else { stat.textContent = formatDuration(ms); stat.title = 'Active reading time'; }
+  node.querySelector('.row-pin').hidden = !rec.note;
+
   node.querySelector('.summary-text').textContent = templateSummary(rec, now, settings.thresholds);
   const noteDisplay = node.querySelector('.note-display');
   if (rec.note) { noteDisplay.textContent = `📌 ${rec.note}`; noteDisplay.hidden = false; }
 
   const jump = node.querySelector('.jump');
   if (open) {
-    jump.textContent = 'Jump to tab';
+    jump.querySelector('.lbl').textContent = 'Jump to tab';
     jump.addEventListener('click', () => jumpTo(rec));
   } else {
-    jump.textContent = 'Reopen';
+    jump.querySelector('.lbl').textContent = 'Reopen';
     jump.addEventListener('click', () => reopen(rec));
   }
   return node;
@@ -213,7 +219,7 @@ function closeDetail() {
   $('#detail-modal').hidden = true;
   detailRec = null;
   setBackgroundInert(false);
-  if (id) document.querySelector(`.card[data-id="${id}"] .meta`)?.focus();
+  if (id) focusInCard(document.querySelector(`.card[data-id="${id}"] .meta`));
 }
 
 $('#detail-backdrop').addEventListener('click', closeDetail);
@@ -248,6 +254,8 @@ function render(records) {
     return section;
   }));
 }
+
+initCardPeek();
 
 (async function init() {
   const records = await loadData();

@@ -25,8 +25,13 @@ choose to connect an AI provider.
 - **A one-line summary that starts with what the page is about.** *"A robotics simulator for
   training and testing AI-driven robots. — Barely opened (under 2s) and never read."* Even a tab
   you ignored tells you what it was.
-- **Click any card for details.** Where you stopped (the heading or code block nearest your
-  scroll position), what you copied, your note, and an on-demand AI insight paragraph.
+- **Compact rows, so you see every tab at once.** Each tab is one line: its title and a single
+  number (reading time, scroll depth, or *unread*). Hover a row — or Tab onto it — and the full
+  card opens on top of the list with the summary, engagement badges and actions, without pushing
+  anything else around. Click a row to pin it open.
+- **Details when you want them.** Click a card's favicon or domain line for where you stopped
+  (the heading or code block nearest your scroll position), what you copied, your note, and an
+  on-demand AI insight paragraph.
 - **Purge with a safety net.** Close every Ghost and Glanced tab in one click, with a confirm
   step and a 30-second undo. Pinned tabs, the tab you're on, and anything with a note are never
   touched.
@@ -43,7 +48,7 @@ choose to connect an AI provider.
   proposes groups, shows them to you, and only applies them if you confirm.
 - **Optional local MCP server.** Off by default. Lets Claude (or any MCP client) answer things like
   *"what was I reading about X last week?"* from your tracked tabs — runs entirely on your machine.
-  See [`mcp-server/README.md`](mcp-server/README.md).
+  One-click install for Claude Desktop; see [Use it with Claude](#use-it-with-claude-optional).
 
 <table>
   <tr>
@@ -70,6 +75,23 @@ git clone https://github.com/asyau/tab-state.git
 3. Browse normally for a few minutes, then click the Tab State icon (or press `Alt+Shift+S`)
 
 After pulling new changes, click the reload icon on the extension's card in `chrome://extensions/`.
+
+## Use it with Claude (optional)
+
+The [`mcp-server/`](mcp-server/README.md) folder is a small local MCP server. Turn on **Settings →
+MCP server** in the extension, connect the server to Claude, and ask things like *"what was I
+reading about Rust async last week?"* or *"summarize my browsing session."* Nothing leaves your
+machine.
+
+- **Claude Desktop — one click:** build the installer with `cd mcp-server && npm install && npm run
+  build:mcpb` (needs `npm install -g @anthropic-ai/mcpb` once), then in Claude Desktop open
+  **Settings → Extensions → Install Extension** and pick `mcp-server/dist/tab-state-mcp-1.0.0.mcpb`.
+  Node ships inside Claude Desktop, so nothing else is needed.
+- **Claude Code:** `cd mcp-server && npm install`, then
+  `claude mcp add tab-state -- node /absolute/path/to/tab-state/mcp-server/server.mjs`.
+
+Tools it exposes: `list_tabs`, `search_tabs`, `get_tab`, `get_session_recap`. Details, including
+exactly what's synced, are in [`mcp-server/README.md`](mcp-server/README.md).
 
 ## How tabs are sorted
 
@@ -147,13 +169,14 @@ lib/{store,template,config,url,format}.js
 ai/providers.js         nano / OpenAI-compatible / Anthropic behind one interface
 ai/prompt.js            what is (and is not) sent to a model
 ui/dashboard.*          the board, detail view, recap, check-list
+ui/card-peek.js         compact rows that open into full cards (hover intent, pin, keyboard)
 ui/history.*            every tracked tab ever, grouped by day
 ui/settings.*           provider, thresholds, grouping toggle, data controls
 scripts/package.mjs     builds the Chrome Web Store zip
 tests/unit              node:test with a fake chrome.* API
 tests/e2e               Playwright against the real extension in Chromium
 docs/                   store submission text, screenshots, promo images
-mcp-server/             optional local MCP server (see mcp-server/README.md)
+mcp-server/             optional local MCP server + Claude Desktop .mcpb installer
 pro-proxy/              optional self-hosted "Pro" tier proxy (see pro-proxy/README.md)
 ```
 
@@ -170,7 +193,14 @@ npm run screenshots         # regenerate docs/screenshots (1280x800)
 npm run promo               # regenerate docs/promo
 npm run package             # build dist/tab-state-<version>.zip for the Web Store
 npm run test:smoke          # (EXT_DIR=<unzipped package>) load a build and check it starts cleanly
+
+cd mcp-server && npm test   # MCP server: store, permissions, a real MCP client/server pair
+npm run build:mcpb          # (in mcp-server/) build the Claude Desktop installer into mcp-server/dist/
 ```
+
+Working on this repo with Claude Code? `.claude/settings.json` enables the
+[UI/UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) plugin for design work
+(Claude Code asks you to trust the repo's settings first).
 
 CI runs `npm test` on every push. The package tests fail if the manifest points at a file that
 doesn't exist, if a permission isn't justified in the store submission doc, or if an import

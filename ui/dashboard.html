@@ -130,23 +130,29 @@
 
   <template id="card-tpl">
     <article class="card">
-      <div class="card-head">
-        <img class="favicon" alt="" width="16" height="16">
-        <button class="title" type="button"></button>
-      </div>
-      <div class="meta muted"></div>
-      <div class="badges"></div>
-      <p class="summary"><span class="summary-text"></span> <span class="source"></span></p>
-      <p class="note-display" hidden></p>
-      <label class="note-label" hidden>
-        Note to self <span class="muted">(flags Follow Up — Purge will always skip this)</span>
-        <textarea class="note-input" rows="2" maxlength="500"></textarea>
-      </label>
-      <div class="card-actions">
-        <button class="btn small jump" type="button">Jump to tab</button>
-        <button class="btn small subtle note-toggle" type="button">+ Note</button>
-        <button class="btn small subtle watch-toggle" type="button" hidden>👁 Watch daily</button>
-        <button class="btn small subtle close" type="button">Close</button>
+      <div class="card-body">
+        <div class="card-head">
+          <img class="favicon" alt="" width="16" height="16">
+          <button class="title" type="button"></button>
+          <span class="row-stat"></span>
+          <svg class="icon row-pin" viewBox="0 0 24 24" aria-label="Has a follow-up note" role="img" hidden><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
+        </div>
+        <div class="card-more">
+          <div class="meta muted"></div>
+          <div class="badges"></div>
+          <p class="summary"><span class="summary-text"></span> <span class="source"></span></p>
+          <p class="note-display" hidden></p>
+          <label class="note-label" hidden>
+            Note to self <span class="muted">(flags Follow Up — Purge will always skip this)</span>
+            <textarea class="note-input" rows="2" maxlength="500"></textarea>
+          </label>
+          <div class="card-actions">
+            <button class="act primary jump" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg><span class="lbl">Jump to tab</span></button>
+            <button class="act note-toggle" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span class="lbl">Note</span></button>
+            <button class="act watch-toggle" type="button" aria-pressed="false" hidden><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span class="lbl">Watch</span></button>
+            <button class="act danger close" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg><span class="lbl">Close</span></button>
+          </div>
+        </div>
       </div>
     </article>
   </template>

@@ -202,6 +202,7 @@ await docs.close();
 await sleep(1200);
 assert.equal(await dash.locator('#closed .card').count(), 1);
 assert.equal(await dash.locator('#closed .card .title').textContent(), 'Auth API Reference');
+await dash.locator('#closed .card').hover(); // cards open on hover; their actions live in the open card
 await dash.locator('#closed .card .jump').click(); // Reopen
 await sleep(1500);
 assert.equal(await dash.locator('.col[data-bucket="deep"] .card').count(), 1, 'reopened into Deep Focus');
@@ -276,6 +277,7 @@ await sleep(300);
 // is excluded from the purge count.
 const purgeCountBefore = await dash.locator('#purge').textContent();
 const recipeCard = dash.locator('.col[data-bucket="glanced"] .card', { hasText: '10 Clickbait Recipes' });
+await recipeCard.hover();
 await recipeCard.locator('.note-toggle').click();
 await recipeCard.locator('.note-input').fill('come back and read the pasta one');
 await dash.locator('#stats').click(); // blur the textarea
@@ -300,6 +302,7 @@ assert.equal(await dash.locator('.col[data-bucket="glanced"] .card', { hasText: 
 
 // Daily check-list: watch the blog tab's domain, confirm it shows checked (it was actively read).
 const blogCard = dash.locator('.card', { hasText: 'Why Rust Async Is Hard' }).first();
+await blogCard.hover();
 await blogCard.locator('.watch-toggle').click();
 await sleep(1200);
 assert.equal(await dash.locator('#checklist').isHidden(), false, 'check-list strip appears');
@@ -371,6 +374,7 @@ await sleep(200);
 assert.equal(await dash.locator('#detail-modal').isHidden(), true, 'Escape closes the modal');
 
 // Jump-to-tab from the modal actually switches tabs (not just closes the modal).
+await docsCard.hover();
 await docsCard.locator('.meta').click();
 await sleep(300);
 await dash.locator('#detail-jump').click();
@@ -395,9 +399,16 @@ assert.equal(await dash.locator('#detail-modal').isHidden(), true, 'clicking the
 
 // --- Accessibility: keyboard, focus management, and re-render safety ---------------------------
 
-const kbMeta = dash.locator('.col[data-bucket="deep"] .card', { hasText: 'Auth API Reference' }).locator('.meta');
+const kbCard = dash.locator('.col[data-bucket="deep"] .card', { hasText: 'Auth API Reference' });
+const kbMeta = kbCard.locator('.meta');
 assert.equal(await kbMeta.getAttribute('role'), 'button', 'domain line is announced as a button');
-await kbMeta.focus();
+// Keyboard path through a compact card: focusing its title opens it, and Tab then reaches the
+// details inside — nothing in it needs a mouse.
+await dash.mouse.move(0, 0);
+await kbCard.locator('.title').focus();
+await dash.keyboard.press('Tab');
+assert.equal(await dash.evaluate(() => document.activeElement?.classList.contains('meta')), true,
+  'Tab from a card title moves into that (now open) card');
 await dash.keyboard.press('Enter');
 await sleep(300);
 assert.equal(await dash.locator('#detail-modal').isHidden(), false, 'Enter on the domain line opens the details');
@@ -411,6 +422,7 @@ assert.equal(await dash.evaluate(() => document.activeElement?.classList.contain
 
 // Heartbeats re-render the board every ~15s; a note being typed must survive that.
 const typingCard = dash.locator('.col[data-bucket="ghost"] .card').first();
+await typingCard.hover();
 await typingCard.locator('.note-toggle').click();
 await typingCard.locator('.note-input').fill('typing in progress');
 await bg(async () => chrome.storage.local.set({ watchlist: [{ domain: 'rerender.test', label: 'rerender', addedAt: Date.now() }] }));

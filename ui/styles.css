@@ -13,6 +13,8 @@
   --focus: #1f7a4d;
   --focus-soft: #e3f3ea;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-pop: 0 2px 4px rgba(0, 0, 0, 0.06), 0 10px 28px rgba(0, 0, 0, 0.14);
+  --border-strong: #c9c9c1;
   --radius: 10px;
   color-scheme: light dark;
 }
@@ -33,6 +35,8 @@
     --focus: #5fc493;
     --focus-soft: #1f3529;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-pop: 0 2px 4px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.55);
+    --border-strong: #4d4d4a;
   }
 }
 
@@ -179,46 +183,80 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 }
 .col-hint { margin: 2px 0 10px; color: var(--muted); font-size: 12.5px; }
 
-/* The list itself scrolls, independent of the page, so the board's header/recap/checklist stay
-   put and you're never scrolling the whole page just to see more tabs — only this list does.
-   180px is roughly the topbar + recap + column header; tune if those sections grow. */
-.cards {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: calc(100vh - 180px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 2px; /* keeps the scrollbar from sitting flush against card borders */
-}
+.cards { display: flex; flex-direction: column; gap: 2px; }
 .empty { padding: 14px 6px; color: var(--muted); font-size: 13px; text-align: center; }
 
-/* Collapsed to a single compact row by default — favicon + title only — and expands to the full
-   card on hover *or* keyboard focus landing anywhere inside it (:focus-within, not just :hover,
-   so this stays fully keyboard-operable: tabbing onto the title/meta/any button expands the card
-   before that element becomes the visible focus target). A screen reader's own virtual-cursor
-   browsing can still reach clipped content independent of visual/focus state — a known trade-off
-   of this pattern — but everything here was already reachable through the existing "view details"
-   modal (role="button" on .meta, Enter/Space handled) as a fully accessible alternative. */
+/* On the 4-column board each column's list scrolls on its own, so the header stays put and more
+   tabs mean scrolling one list, not the page. The min-height gives an open card (which overlays
+   the rows below it, see .card-body) room to show in a column holding only a row or two; the side
+   padding/negative margin keeps its shadow from being clipped by the scroll box. Narrower layouts
+   stack columns, so the page scrolls instead and there's no inner scroll box to clip anything. */
+.board .cards {
+  min-height: 300px;
+  max-height: calc(100vh - 180px);
+  margin: 0 -6px;
+  padding: 0 6px 2px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media (max-width: 1100px) {
+  .board .cards { min-height: 0; max-height: none; overflow: visible; }
+}
+
+/* --- Cards: one line at rest, full card on hover/focus -------------------
+   Each .card is a fixed-height slot in the list and never changes size. Its .card-body is
+   positioned over the slot; opening it grows the body *over* the rows below instead of pushing
+   them down, so nothing else in the list moves (no layout shift, no card sliding out from under
+   the pointer). Open = .is-open (set by card-peek.js after a short hover-intent delay, or pinned by
+   click/tap) or keyboard focus anywhere inside (:focus-within, immediately). Closing is faster than
+   opening. Collapsed, the extra content is visibility:hidden, so Tab goes title -> (card opens) ->
+   its details and actions -> next card, and screen readers don't read clipped text. */
 .card {
+  --row-h: 30px;
+  --shift: 0px;
+  position: relative;
+  flex: none;
   min-width: 0;
-  padding: 6px 12px;
+  height: var(--row-h);
+}
+.card-body {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: grid;
+  grid-template-rows: auto 0fr;
+  padding: 4px 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 8px;
   background: var(--surface);
-  box-shadow: var(--shadow);
-  max-height: 34px;
-  overflow: hidden;
-  transition: max-height 0.15s ease, padding 0.15s ease;
+  transition:
+    grid-template-rows 110ms ease-in,
+    transform 110ms ease-in,
+    box-shadow 110ms ease-in,
+    border-color 120ms ease,
+    z-index 0s linear 110ms; /* stay above neighbours until fully closed */
 }
-.card:hover, .card:focus-within {
-  max-height: 800px;
-  padding: 10px 12px;
+.card:hover .card-body { border-color: var(--border-strong); }
+.card.active-now .card-body { border-color: var(--accent); }
+
+.card.is-open .card-body,
+.card:focus-within:not(.dismissed) .card-body {
+  grid-template-rows: auto 1fr;
+  z-index: 10;
+  transform: translateY(var(--shift));
+  box-shadow: var(--shadow-pop);
+  transition:
+    grid-template-rows 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 170ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 170ms ease-out,
+    border-color 120ms ease,
+    z-index 0s;
 }
-.card.active-now { border-color: var(--accent); }
-.card-head { display: flex; align-items: flex-start; gap: 8px; }
-.favicon { flex: none; margin-top: 2px; border-radius: 3px; }
+
+.card-head { display: flex; align-items: flex-start; gap: 8px; min-width: 0; line-height: 20px; }
+.favicon { flex: none; margin-top: 2px; border-radius: 3px; cursor: pointer; }
 .title {
+  flex: 1;
   min-width: 0;
   padding: 0;
   border: 0;
@@ -226,22 +264,57 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
   color: var(--text);
   font: inherit;
   font-weight: 600;
+  line-height: 20px;
   text-align: left;
   cursor: pointer;
-  overflow-wrap: anywhere;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.card:hover .title, .card:focus-within .title {
-  white-space: normal;
+.card.is-open .title, .card:focus-within:not(.dismissed) .title {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  overflow: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .title:hover { color: var(--accent); }
-.meta { margin: 2px 0 6px 24px; font-size: 12px; overflow-wrap: anywhere; }
+.row-stat {
+  flex: none;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.row-pin { width: 13px; height: 13px; margin-top: 3.5px; color: var(--accent); }
+
+.card-more {
+  min-height: 0;
+  margin: 0 -3px;
+  padding: 0 3px; /* room for focus rings, which overflow:hidden would otherwise clip */
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 80ms ease-in, visibility 0s linear 110ms;
+}
+.card.is-open .card-more, .card:focus-within:not(.dismissed) .card-more {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 150ms ease-out 40ms, visibility 0s;
+}
+.card-more > :first-child { margin-top: 2px; }
+
+.meta { margin: 0 0 6px 24px; font-size: 12px; overflow-wrap: anywhere; cursor: pointer; }
+.meta:hover { color: var(--text); }
 .badges { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
 .badge {
   padding: 1px 7px;
@@ -250,7 +323,7 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
-.summary { margin: 0 0 8px; font-size: 13px; }
+.summary { margin: 0 0 6px; font-size: 13px; }
 .source {
   padding: 0 5px;
   border-radius: 4px;
@@ -260,6 +333,7 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
   font-weight: 600;
   white-space: nowrap;
 }
+.source:empty { display: none; }
 .source.basic { background: var(--surface-2); color: var(--muted); }
 
 .note-display {
@@ -286,22 +360,75 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
   resize: vertical;
 }
 
-.card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Quiet icon+label actions instead of a row of outlined buttons: they read as part of the card,
+   and never wrap onto a second line at normal column widths. */
+.card-actions {
+  container-type: inline-size;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0;
+  margin: 0 -6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.act {
+  position: relative; /* contains .danger's visually-hidden label, so it's clipped with the card */
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.act:hover { background: var(--surface-2); color: var(--text); }
+.act.primary { color: var(--accent); }
+.act.primary:hover { background: var(--accent-soft); color: var(--accent); }
+.act.danger { margin-left: auto; padding: 0 8px; }
+/* Icon-only on screen, label kept as the accessible name (and a title tooltip): Close always, and
+   Watch/Note when the card is too narrow for all four labels on one line. */
+.act.danger .lbl {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+@container (max-width: 290px) {
+  .watch-toggle .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+@container (max-width: 210px) {
+  .note-toggle .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+.act.danger:hover { background: var(--danger-soft); color: var(--danger); }
+.act[aria-pressed="true"] { color: var(--focus); }
+.act:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.card.no-anim .card-body, .card.no-anim .card-more { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .card-body, .card-more, .card.is-open .card-body, .card.is-open .card-more,
+  .card:focus-within .card-body, .card:focus-within .card-more { transition: none; }
+}
 
 /* --- Closed list -------------------------------------------------------- */
 
 .closed { padding: 0 24px 32px; }
 .closed h2 { margin-bottom: 10px; font-size: 14.5px; }
-.closed-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+.closed-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 4px 8px; }
 @media (max-width: 640px) { .closed { padding: 0 16px 24px; } }
 
 /* --- History -------------------------------------------------------------- */
 
 .history-days { display: flex; flex-direction: column; gap: 16px; padding: 20px 24px; }
 .history-day { min-width: 0; }
-/* One day's list can hold many tabs; each day scrolls on its own rather than growing the page
-   without bound, same reasoning as .cards on the board. */
-.history-day .cards { max-height: 60vh; }
+/* Days list their rows straight onto the page (no inner scroll box): with one-line rows a day
+   rarely runs long, and it leaves an open card nothing to be clipped by. */
+.history-day .cards { max-width: 720px; }
 @media (max-width: 640px) { .history-days { padding: 16px; } }
 
 /* --- Toast -------------------------------------------------------------- */

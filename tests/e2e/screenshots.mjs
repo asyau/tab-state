@@ -107,13 +107,16 @@ await sleep(1500);
 
 // Add a note to the Isaac Sim card so the Follow Up section and note UI show in the screenshot.
 const isaacCard = dash.locator('.card', { hasText: 'NVIDIA Isaac Sim' }).first();
+await isaacCard.hover();
 await isaacCard.locator('.note-toggle').click();
 await isaacCard.locator('.note-input').fill("Want to actually learn this — don't lose it");
 await dash.locator('#stats').click();
 await sleep(800);
 
 // Watch Gmail daily.
-await dash.locator('.card', { hasText: 'Inbox — Gmail' }).first().locator('.watch-toggle').click();
+const gmailCard = dash.locator('.card', { hasText: 'Inbox — Gmail' }).first();
+await gmailCard.hover();
+await gmailCard.locator('.watch-toggle').click();
 await sleep(1000);
 
 await dash.screenshot({ path: path.join(OUT, '1-dashboard.png') });

@@ -15,7 +15,27 @@ Chrome (Tab State extension)  --POST /sync-->  tab-state-mcp (this process)  <--
                                               ~/.tab-state-mcp/data.json
 ```
 
-## Install & run
+## One-click install for Claude Desktop (.mcpb)
+
+The easiest way to use this with Claude Desktop: a `.mcpb` bundle that installs with no `npm
+install` and no config-file editing (Node ships inside Claude Desktop).
+
+```bash
+npm install -g @anthropic-ai/mcpb   # once
+cd mcp-server
+npm install
+npm run build:mcpb                  # -> dist/tab-state-mcp-<version>.mcpb
+```
+
+Then in Claude Desktop: **Settings → Extensions → Install Extension**, pick the `.mcpb` file, done.
+It asks for one optional setting — the sync port (default 8765), which must match the port in the
+Tab State extension's **Settings → MCP server** panel. Then turn sync on there (see
+[Connect it to Chrome](#connect-it-to-chrome)).
+
+The bundle contains only the manifest, `server.mjs`/`store.mjs`, an icon and production
+dependencies — no tests or dev tooling.
+
+## Install & run (manually, any MCP client)
 
 ```bash
 cd mcp-server

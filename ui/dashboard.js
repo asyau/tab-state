@@ -5,6 +5,7 @@ import { RECORD_PREFIX } from '../lib/store.js';
 import { summaryFingerprint, templateSummary, describeAnchor } from '../lib/template.js';
 import { domainOf } from '../lib/url.js';
 import { loadSettings } from '../lib/settings.js';
+import { initCardPeek, captureOpen, restoreOpen, focusInCard } from './card-peek.js';
 import {
   PROVIDERS, enableNano, nanoAvailability, summarize, summarizeSession, proposeGroups, getInsight,
 } from '../ai/providers.js';
@@ -142,6 +143,20 @@ function buildCard(rec, now, { closed = false } = {}) {
   if (rec.views > 1) badges.append(badge(`${rec.views} visits`));
   if (rec.note) badges.append(badge('📌 follow up', 'Purge always skips this tab'));
 
+  // The one number worth seeing without opening the card: how long it was read (Deep/Partial,
+  // and closed tabs), how far it was scrolled (Glanced — seconds say little there), or that it
+  // never was (Ghost).
+  const stat = node.querySelector('.row-stat');
+  if (bucket === 'ghost') stat.textContent = 'unread';
+  else if (bucket === 'glanced' && !closed) {
+    stat.textContent = `${Math.round(rec.maxScrollPct || 0)}%`;
+    stat.title = 'Furthest scroll depth';
+  } else {
+    stat.textContent = formatDuration(ms);
+    stat.title = 'Active reading time';
+  }
+  node.querySelector('.row-pin').hidden = !rec.note;
+
   const summary = summaryFor(rec, now);
   node.querySelector('.summary-text').textContent = summary.text;
   const source = node.querySelector('.source');
@@ -154,7 +169,8 @@ function buildCard(rec, now, { closed = false } = {}) {
   const noteInput = node.querySelector('.note-input');
   const noteToggle = node.querySelector('.note-toggle');
   noteInput.value = rec.note || '';
-  noteToggle.textContent = rec.note ? 'Edit note' : '+ Note';
+  noteToggle.querySelector('.lbl').textContent = rec.note ? 'Edit note' : 'Note';
+  noteToggle.title = rec.note ? 'Edit your note' : 'Add a note — flags it Follow Up';
   if (rec.note) {
     noteDisplay.textContent = `📌 ${rec.note}`;
     noteDisplay.hidden = false;
@@ -175,21 +191,25 @@ function buildCard(rec, now, { closed = false } = {}) {
   const close = node.querySelector('.close');
   const watchBtn = node.querySelector('.watch-toggle');
   if (closed) {
-    jump.textContent = 'Reopen';
+    jump.querySelector('.lbl').textContent = 'Reopen';
     jump.addEventListener('click', () => send('ts:restore', { ids: [rec.id], focus: true }).catch(showError));
     title.addEventListener('click', () => send('ts:restore', { ids: [rec.id], focus: true }).catch(showError));
-    close.textContent = 'Dismiss';
+    close.querySelector('.lbl').textContent = 'Dismiss';
+    close.title = 'Dismiss from this list';
     close.addEventListener('click', () => send('ts:dismiss', { ids: [rec.id] }).catch(showError));
   } else {
     const goTo = () => jumpTo(rec);
     jump.addEventListener('click', goTo);
     title.addEventListener('click', goTo);
+    close.title = 'Close this tab';
     close.addEventListener('click', () => chrome.tabs.remove(rec.tabId).catch(showError));
 
     const domain = domainOf(rec.url);
     const watched = state.watchlist.some((w) => w.domain === domain);
     watchBtn.hidden = false;
-    watchBtn.textContent = watched ? '✓ Watching daily' : '👁 Watch daily';
+    watchBtn.querySelector('.lbl').textContent = watched ? 'Watching' : 'Watch';
+    watchBtn.title = watched ? 'On your daily check-list — click to remove' : 'Add this site to your daily check-list';
+    watchBtn.setAttribute('aria-pressed', String(watched));
     watchBtn.addEventListener('click', () => {
       const type = watched ? 'ts:watchRemove' : 'ts:watchAdd';
       send(type, { domain, label: rec.title || domain }).catch(showError);
@@ -217,13 +237,15 @@ function captureFocus() {
 }
 
 function restoreFocus(f) {
-  if (f) document.querySelector(`${f.region} .card[data-id="${f.id}"] .${f.cls}`)?.focus();
+  if (f) focusInCard(document.querySelector(`${f.region} .card[data-id="${f.id}"] .${f.cls}`));
 }
 
 function render() {
   if (document.activeElement?.classList?.contains('note-input')) { state.renderDeferred = true; return; }
   const focus = captureFocus();
+  const opened = captureOpen();
   renderNow();
+  restoreOpen(opened);
   restoreFocus(focus);
 }
 
@@ -423,7 +445,7 @@ function closeDetail() {
   detailRec = null;
   setBackgroundInert(false);
   // The card may have been rebuilt while the modal was open, so find it again rather than keep a stale node.
-  if (id) document.querySelector(`.card[data-id="${id}"] .meta`)?.focus();
+  if (id) focusInCard(document.querySelector(`.card[data-id="${id}"] .meta`));
 }
 
 $('#detail-backdrop').addEventListener('click', closeDetail);
@@ -653,6 +675,7 @@ chrome.tabs.onRemoved.addListener(scheduleRefresh);
 chrome.tabs.onCreated.addListener(scheduleRefresh);
 chrome.tabs.onUpdated.addListener((id, info) => { if (info.pinned !== undefined) scheduleRefresh(); });
 setInterval(render, 30_000); // keep "5m ago" labels fresh
+initCardPeek();
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') send('ts:refresh').catch(() => {}).finally(refresh);
 });
