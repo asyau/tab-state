@@ -8,6 +8,7 @@
 // model is only exposed to window contexts, and downloading it needs a user click.
 
 import { templateInsight, templateSessionSummary, templateSummary } from '../lib/template.js';
+import { getExtPay } from '../lib/extpay.js';
 import {
   SYSTEM_PROMPT, buildUserPrompt, cleanOutput,
   SESSION_SYSTEM_PROMPT, buildSessionPrompt,
@@ -157,6 +158,38 @@ async function anthropicRun(systemPrompt, userPrompt, settings) {
   return data?.content?.find((b) => b.type === 'text')?.text ?? '';
 }
 
+// --- Hosted Pro tier (your own pro-proxy/ deployment, gated by ExtensionPay) ----------------
+
+// See pro-proxy/README.md. ExtensionPay is a client-only, "no server needed" product with no
+// public server-to-server verification API, so this is client-side trust, not cryptographic
+// proof — the Worker's rate limit is a cost backstop, not a security boundary. That's spelled
+// out there in full; it's a deliberate trade-off of using ExtensionPay, not an oversight here.
+export async function hostedUser() {
+  const extpay = await getExtPay();
+  return extpay.getUser();
+}
+
+export async function openHostedCheckout(planNickname) {
+  const extpay = await getExtPay();
+  return extpay.openPaymentPage(planNickname);
+}
+
+async function hostedRun(systemPrompt, userPrompt, settings) {
+  const cfg = settings.hosted;
+  if (!cfg?.workerUrl) throw new Error('Set your pro-proxy Worker URL in Settings (see pro-proxy/README.md)');
+  const user = await hostedUser().catch(() => null);
+  if (!user?.paid) throw new Error('Upgrade to Tab State Pro to use hosted summaries (Settings → Tab State Pro)');
+  const res = await fetch(`${cfg.workerUrl.replace(/\/+$/, '')}/summarize`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    body: JSON.stringify({ systemPrompt, userPrompt, userId: user.email || String(user.installedAt) }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  const data = await res.json();
+  return data?.text ?? '';
+}
+
 // --- Registry -----------------------------------------------------------------
 
 // `run` here takes (systemPrompt, userPrompt, settings) uniformly; the per-tab/session/grouping
@@ -166,8 +199,8 @@ export const PROVIDERS = {
   nano: { id: 'nano', label: 'On-device: Gemini Nano (Chrome built-in)', local: true, run: (sys, usr) => nanoRun(sys, usr) },
   openai: { id: 'openai', label: 'OpenAI-compatible API (OpenAI, Ollama, LM Studio, OpenRouter, Groq…)', local: false, run: openaiRun },
   anthropic: { id: 'anthropic', label: 'Anthropic API (Claude)', local: false, run: anthropicRun },
+  hosted: { id: 'hosted', label: 'Tab State Pro (hosted, no key needed)', local: false, run: hostedRun },
   template: { id: 'template', label: 'Basic: no AI, built-in sentence', local: true },
-  // Future paid tier: { id: 'hosted', label: 'Pro (hosted)', run: callOurProxy }
 };
 
 export function providerChain(settings) {

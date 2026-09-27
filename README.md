@@ -91,10 +91,22 @@ insights and grouping, pick a provider in **Settings**:
 | **On-device (Gemini Nano)** | Built into recent Chrome, free, nothing leaves your machine. Needs a one-time model download and a capable device. |
 | **OpenAI-compatible API** | OpenAI, OpenRouter, Groq, or a local server such as Ollama or LM Studio. Ollama needs no key (start it with `OLLAMA_ORIGINS="chrome-extension://*"`). |
 | **Anthropic API** | Claude models, bring your own key. |
+| **Tab State Pro (hosted)** | No key needed; needs your own deployed proxy + an ExtensionPay subscription. See [below](#hosted-pro-tier-self-hosted). |
 
 With a cloud provider, Tab State sends page titles, domains, descriptions, your engagement numbers
 and your notes. It **never** sends page body text or the text you selected. Details, and exactly
 what each feature sends, are in the [privacy policy](PRIVACY.md).
+
+## Hosted "Pro" tier (self-hosted)
+
+A fourth provider, **Tab State Pro (hosted)**, needs no API key — summaries run through a small
+proxy that holds the key for you, unlocked by an [ExtensionPay](https://extensionpay.com)
+subscription. There's no public instance of this to subscribe to today: it's a self-hosted option
+for anyone who wants to run their own "Pro" tier (their own Cloudflare account, their own
+Anthropic key, their own ExtensionPay account). See [`pro-proxy/README.md`](pro-proxy/README.md)
+for how it works, how to deploy it, and — importantly — its security model (ExtensionPay has no
+server-to-server verification API, so this trusts the extension's own client-side payment check;
+that trade-off is explained there in full).
 
 ## Design notes
 
@@ -138,6 +150,7 @@ tests/unit              node:test with a fake chrome.* API
 tests/e2e               Playwright against the real extension in Chromium
 docs/                   store submission text, screenshots, promo images
 mcp-server/             optional local MCP server (see mcp-server/README.md)
+pro-proxy/              optional self-hosted "Pro" tier proxy (see pro-proxy/README.md)
 ```
 
 ## Development
@@ -171,9 +184,10 @@ worth reading before you publish.
 
 ## Roadmap
 
-- **Hosted "Pro" summaries** for people who'd rather not bring an API key (a small proxy plus a
-  paywall). The extension side is already just another OpenAI-compatible endpoint.
 - Learning from which tabs you flag, so it can suggest them.
+- A published, official "Tab State Pro" you can subscribe to without deploying anything yourself
+  (the self-hosted version — see [Hosted "Pro" tier](#hosted-pro-tier-self-hosted) — works today,
+  but running your own Cloudflare Worker is still on you).
 
 ## License
 

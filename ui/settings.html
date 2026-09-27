@@ -52,6 +52,24 @@
         </div>
       </fieldset>
 
+      <fieldset id="hosted-fields" class="panel" aria-label="Tab State Pro (hosted) settings" hidden>
+        <h2>Tab State Pro (hosted)</h2>
+        <p class="muted">
+          No API key to manage — summaries run through a small proxy that holds the key for you.
+          This needs a Worker URL from your own deployment; see <code>pro-proxy/README.md</code> in
+          the repo (this isn't a public service you can just turn on).
+        </p>
+        <div class="field">
+          <label for="hosted-worker-url">Worker URL</label>
+          <input id="hosted-worker-url" type="url" placeholder="https://your-worker.your-subdomain.workers.dev" spellcheck="false">
+        </div>
+        <p id="hosted-status" class="note"></p>
+        <div class="row">
+          <button id="hosted-upgrade" type="button" class="btn subtle">Upgrade / manage subscription</button>
+          <button id="hosted-refresh" type="button" class="btn subtle">Refresh status</button>
+        </div>
+      </fieldset>
+
       <p id="privacy" class="note warn" hidden>
         With a cloud provider, page titles, descriptions, and your reading stats (not page contents) are sent to that provider.
         API keys are stored unencrypted in this browser profile.

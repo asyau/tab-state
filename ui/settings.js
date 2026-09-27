@@ -1,6 +1,9 @@
 import { THRESHOLDS } from '../lib/config.js';
 import { OPENAI_PRESETS, loadSettings, saveSettings } from '../lib/settings.js';
-import { PROVIDERS, enableNano, nanoAvailability, sendsDataOffDevice, summarize } from '../ai/providers.js';
+import {
+  PROVIDERS, enableNano, nanoAvailability, sendsDataOffDevice, summarize,
+  hostedUser, openHostedCheckout,
+} from '../ai/providers.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -68,7 +71,9 @@ function renderProviders() {
 function syncVisibility() {
   $('#openai-fields').hidden = settings.provider !== 'openai';
   $('#anthropic-fields').hidden = settings.provider !== 'anthropic';
+  $('#hosted-fields').hidden = settings.provider !== 'hosted';
   $('#privacy').hidden = !sendsDataOffDevice(settings);
+  if (settings.provider === 'hosted') renderHostedStatus();
 }
 
 function fillFields() {
@@ -83,6 +88,7 @@ function fillFields() {
   $('#openai-model').value = settings.openai.model;
   $('#anthropic-key').value = settings.anthropic.apiKey;
   $('#anthropic-model').value = settings.anthropic.model;
+  $('#hosted-worker-url').value = settings.hosted.workerUrl;
 }
 
 function readFields() {
@@ -94,6 +100,9 @@ function readFields() {
   settings.anthropic = {
     apiKey: $('#anthropic-key').value.trim(),
     model: $('#anthropic-model').value.trim(),
+  };
+  settings.hosted = {
+    workerUrl: $('#hosted-worker-url').value.trim(),
   };
 }
 
@@ -137,6 +146,31 @@ $('#enable-nano').addEventListener('click', async () => {
   btn.textContent = 'Download on-device model';
   renderNano();
 });
+
+// --- Tab State Pro (hosted) ---------------------------------------------------------------
+
+async function renderHostedStatus() {
+  const status = $('#hosted-status');
+  status.textContent = 'Checking…';
+  try {
+    const user = await hostedUser();
+    status.textContent = user?.paid
+      ? `✅ Subscribed${user.email ? ` as ${user.email}` : ''}.`
+      : 'Not subscribed yet — use "Upgrade" below once your Worker URL is set.';
+  } catch (err) {
+    status.textContent = `⚠️ Could not check subscription status: ${err?.message || err}`;
+  }
+}
+
+$('#hosted-upgrade').addEventListener('click', async () => {
+  try {
+    await openHostedCheckout();
+  } catch (err) {
+    $('#hosted-status').textContent = `⚠️ Could not open the upgrade page: ${err?.message || err}`;
+  }
+});
+
+$('#hosted-refresh').addEventListener('click', renderHostedStatus);
 
 // --- Thresholds ------------------------------------------------------------------------------
 

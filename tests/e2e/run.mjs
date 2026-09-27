@@ -239,6 +239,20 @@ assert.equal(saved.provider, 'openai');
 assert.equal(saved.openai.baseUrl, 'http://localhost:11434/v1');
 await settings.screenshot({ path: path.join(OUT, 'settings.png'), fullPage: true });
 
+// Hosted Pro tier: this is what actually loads the vendored ExtPay client (see lib/extpay.js) in a
+// real extension page — the one thing the unit tests can't cover, since they inject a fake instead
+// (real ExtPay needs a real chrome.runtime.id). No real Worker or registered extension id exists
+// here, so this isn't checking a real subscription — just that ExtPay loads and runs at all
+// without throwing (the "no console errors" assertion at the very end of this file would catch it).
+await settings.check('input[value="hosted"]');
+assert.equal(await settings.locator('#hosted-fields').isVisible(), true);
+await settings.waitForFunction(() => document.querySelector('#hosted-status').textContent && document.querySelector('#hosted-status').textContent !== 'Checking…');
+console.log('hosted status:', await settings.locator('#hosted-status').textContent());
+// Switch back: every toggle handler on this page (e.g. #grouping-enabled below) re-saves the
+// *whole* in-memory settings object, not just its own field, so leaving the radio on "hosted"
+// here would silently swap what the grouping-toast check further down actually exercises.
+await settings.check('input[value="openai"]');
+
 // Dashboard reacts to the provider change; with no Ollama running it falls back and flags the error.
 await dash.bringToFront();
 await sleep(2500);

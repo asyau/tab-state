@@ -2,15 +2,17 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   summarize, summarizeSession, getInsight, providerChain, sendsDataOffDevice, nanoAvailability,
-  proposeGroups, parseGroupsJson, resetNanoSessions,
+  proposeGroups, parseGroupsJson, resetNanoSessions, hostedUser, openHostedCheckout,
 } from '../../ai/providers.js';
 import { mergeSettings } from '../../lib/settings.js';
+import { __setExtPayForTests } from '../../lib/extpay.js';
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = realFetch;
   delete globalThis.LanguageModel;
   resetNanoSessions();
+  __setExtPayForTests(null);
 });
 
 const record = {
@@ -217,4 +219,54 @@ test('proposeGroups reports a clean error when the model output cannot be parsed
   const out = await proposeGroups(groupable, settings);
   assert.deepEqual(out.groups, []);
   assert.match(out.errors[0], /could not be parsed/);
+});
+
+// --- Hosted Pro tier (see ai/providers.js hostedRun / lib/extpay.js) --------------------------
+// The real ExtPay client needs a real chrome.runtime.id (see lib/extpay.js's comment), so these
+// use __setExtPayForTests to inject a fake instead of touching the vendored client at all.
+
+test('hosted provider falls back to the template with a clear error when no Worker URL is set', async () => {
+  const settings = mergeSettings({ provider: 'hosted' });
+  const out = await summarize(record, settings);
+  assert.equal(out.source, 'template');
+  assert.match(out.errors[0], /pro-proxy Worker URL/);
+});
+
+test('hosted provider falls back to the template when the user has not paid', async () => {
+  __setExtPayForTests({ getUser: async () => ({ paid: false }) });
+  const settings = mergeSettings({ provider: 'hosted', hosted: { workerUrl: 'https://worker.example' } });
+  const out = await summarize(record, settings);
+  assert.equal(out.source, 'template');
+  assert.match(out.errors[0], /Upgrade to Tab State Pro/);
+});
+
+test('hosted provider posts to the configured Worker with the paid user\'s id once paid', async () => {
+  __setExtPayForTests({ getUser: async () => ({ paid: true, email: 'reader@example.com' }) });
+  const calls = mockFetch(() => json(200, { text: 'Spent 2m reading.' }));
+  const settings = mergeSettings({ provider: 'hosted', hosted: { workerUrl: 'https://worker.example/' } });
+  const out = await summarize(record, settings);
+  assert.equal(out.source, 'hosted');
+  assert.equal(out.text, 'Spent 2m reading.');
+  assert.equal(calls[0].url, 'https://worker.example/summarize');
+  assert.equal(calls[0].body.userId, 'reader@example.com');
+});
+
+test('hosted provider falls back to the template when the Worker itself errors', async () => {
+  __setExtPayForTests({ getUser: async () => ({ paid: true, email: 'reader@example.com' }) });
+  mockFetch(() => json(429, { error: 'Daily request limit reached' }));
+  const settings = mergeSettings({ provider: 'hosted', hosted: { workerUrl: 'https://worker.example' } });
+  const out = await summarize(record, settings);
+  assert.equal(out.source, 'template');
+  assert.match(out.errors[0], /429/);
+});
+
+test('hostedUser() and openHostedCheckout() pass straight through to the injected ExtPay instance', async () => {
+  let openedPlan;
+  __setExtPayForTests({
+    getUser: async () => ({ paid: true, email: 'reader@example.com' }),
+    openPaymentPage: (plan) => { openedPlan = plan; },
+  });
+  assert.deepEqual(await hostedUser(), { paid: true, email: 'reader@example.com' });
+  await openHostedCheckout('yearly');
+  assert.equal(openedPlan, 'yearly');
 });

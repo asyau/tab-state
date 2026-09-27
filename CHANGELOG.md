@@ -6,6 +6,9 @@
   like "what was I reading about X last week?" from your tracked tabs. Off by default; the
   extension only syncs to it if you turn it on in Settings, and it never leaves your machine. See
   [`mcp-server/README.md`](mcp-server/README.md).
+- Optional self-hosted "Tab State Pro" tier (`pro-proxy/`): a new hosted provider that needs no
+  API key, gated by an ExtensionPay subscription, backed by a Cloudflare Worker you deploy
+  yourself. See [`pro-proxy/README.md`](pro-proxy/README.md), including its security model.
 
 ## 1.0.0
 

@@ -7,14 +7,21 @@ spec but not exercised live — and why, so nothing here is overstated.
 ## Verified by running
 
 - **Core tracking, dashboard, purge/undo, notes, recap, check-list, detail view, accessibility,
-  MCP sync**: `tests/unit/*.test.js` (64 tests, fake `chrome.*` API) and `tests/e2e/run.mjs`
-  (Playwright driving the real unpacked extension in Chromium, including real page navigation,
-  scrolling, copy/highlight events, and a real HTTP POST to a local MCP sync listener).
+  MCP sync, hosted-provider UI**: `tests/unit/*.test.js` (69 tests, fake `chrome.*` API) and
+  `tests/e2e/run.mjs` (Playwright driving the real unpacked extension in Chromium, including real
+  page navigation, scrolling, copy/highlight events, a real HTTP POST to a local MCP sync
+  listener, and — importantly — the real vendored ExtPay client actually loading and running
+  inside a genuine extension page without crashing, which the unit tests can't cover since they
+  inject a fake `ExtPay` instead of touching the vendored client at all; see
+  `lib/extpay.js`'s comment for why).
 - **Real websites**: `tests/e2e/real-sites.mjs` against live Wikipedia/MDN/GitHub/Hacker News.
 - **`mcp-server/`**: `mcp-server/test/*.test.js` (12 tests) — a real MCP `Client`/`Server` pair
   over `InMemoryTransport`, a real HTTP request against the sync endpoint, and a genuine child
   process spawn (`test/manual-subprocess-check.mjs`) that sends a real MCP `initialize` handshake
   over stdio, used to catch a startup bug that otherwise failed silently (see its file header).
+- **`pro-proxy/`**: `pro-proxy/test/worker.test.js` (11 tests) — the real Worker `fetch` handler,
+  with a mocked KV binding and mocked outbound `fetch`, covering routing, request validation, the
+  Anthropic request/response shape, error surfacing, and the per-user rate limit end to end.
 
 All of the above ran on macOS, against Chromium (Playwright's bundled build), in this session.
 
@@ -32,6 +39,18 @@ with the model downloaded — Google's stated requirements are Chrome 131+ on Wi
 13+, or Linux, 22GB+ free storage, and 4GB+ VRAM, none of which a sandboxed test browser satisfies.
 If you have a machine that meets those, Settings → Summary provider → On-device will show a real
 download progress bar and you can confirm it there.
+
+**Hosted Pro tier ([`pro-proxy/`](../pro-proxy/README.md)).** The vendored ExtPay client was
+confirmed to actually load and run in a real extension page in this session (`tests/e2e/run.mjs`)
+— it calls the real extensionpay.com over HTTPS and reports back an (unregistered, unpaid) user
+without throwing, which is what proves the integration itself is wired correctly. What wasn't, and
+couldn't be, verified here: an actual Cloudflare deployment (`wrangler deploy` needs a real
+Cloudflare account), a real ExtensionPay subscription and Stripe payment, or a real Anthropic call
+made *through* a deployed Worker end to end — none of those are things this session has accounts
+or credentials for, and creating payment/financial accounts isn't something to do without you.
+The Worker's own logic (routing, rate limiting, the Anthropic request shape, error handling) is
+unit-tested against a mocked KV store and mocked `fetch` (`pro-proxy/test/worker.test.js`), which
+covers correctness but not a real deployment.
 
 **Cloud API providers (OpenAI-compatible and Anthropic, same file).** No live API keys or a running
 Ollama/LM Studio instance were available in this session, so no real network call to either

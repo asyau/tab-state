@@ -1,0 +1,12 @@
+name = "tab-state-pro-proxy"
+main = "src/worker.js"
+compatibility_date = "2025-01-01"
+
+# Create with: wrangler kv namespace create RATE_LIMIT
+# Then paste the returned id below.
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# Set the actual secret with: wrangler secret put ANTHROPIC_API_KEY
+# (Never put the real key in this file — it's committed to git.)

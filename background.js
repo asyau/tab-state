@@ -12,6 +12,14 @@ function logError(err) {
   console.warn('[tab-state]', err);
 }
 
+// Note on the hosted Pro tier (ai/providers.js, lib/extpay.js): deliberately not wired up here.
+// ExtPay's docs ask for a `startBackground()` call in the service worker, but that only matters
+// for its onPaid/onTrialStarted live-update messages, which need a content script on
+// extensionpay.com that this extension doesn't declare (kept out of v1 to avoid an extra
+// permission for a page most users never load). Without it, `getUser()` is checked on demand from
+// Settings instead — same pattern as the Nano provider, which also never touches the service
+// worker. See pro-proxy/README.md.
+
 // --- Focus / lifecycle ------------------------------------------------------
 
 chrome.tabs.onActivated.addListener(() => tracker.onFocusMaybeChanged().catch(logError));
