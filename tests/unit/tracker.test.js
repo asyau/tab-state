@@ -68,6 +68,36 @@ test('counts active time only while a tab is focused', async () => {
   assert.equal(rb.activeSince, env.now - 5 * S, 'b is running');
 });
 
+test('with two windows, only the tab in the OS-focused window accrues time', async () => {
+  // Each Chrome window tracks its own "active" tab independently — a background window still has
+  // one, it's just not the one the user is looking at. getFocusedTab() has to scope to the
+  // OS-focused window's active tab, not just "whichever tab is marked active somewhere."
+  const a = env.openTab({ url: 'https://a.com/', windowId: 1 });
+  const b = env.openTab({ url: 'https://b.com/', windowId: 2 });
+  await tracker.onTabCreated(a);
+  await tracker.onTabCreated(b);
+  env.activate(a.id); // active tab of window 1
+  env.activate(b.id); // active tab of window 2 — does not touch window 1's active tab
+  env.focusedWindowId = 1;
+  await tracker.onFocusMaybeChanged();
+  env.advance(20 * S);
+  await tracker.onTick();
+
+  assert.equal((await recordFor('https://a.com/')).activeSince, env.now - 20 * S, 'a is running, window 1 is focused');
+  assert.equal((await recordFor('https://b.com/'))?.activeSince ?? null, null, 'b never ran: its window was never focused');
+
+  // Alt-tab to the other window. Neither tab's own "active" state changes.
+  env.focusedWindowId = 2;
+  await tracker.onFocusMaybeChanged();
+  env.advance(10 * S);
+  await tracker.onTick();
+
+  const ra = await recordFor('https://a.com/');
+  assert.equal(ra.activeMs, 20 * S, 'a stopped accruing the moment focus left window 1');
+  assert.equal(ra.activeSince, null);
+  assert.equal((await recordFor('https://b.com/')).activeSince, env.now - 10 * S, 'b started accruing once window 2 became focused');
+});
+
 test('pauses when the browser loses focus or the user goes idle', async () => {
   const a = env.openTab({ url: 'https://a.com/', active: true });
   await tracker.onFocusMaybeChanged();
