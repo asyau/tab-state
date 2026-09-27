@@ -1,0 +1,44 @@
+{
+  "manifest_version": "0.3",
+  "name": "tab-state-mcp",
+  "display_name": "Tab State",
+  "version": "1.0.0",
+  "description": "Answers questions about your Chrome tab reading history from the Tab State extension.",
+  "long_description": "Tab State tracks how you actually use your Chrome tabs (active reading time, scroll depth, copies/highlights) and sorts them into Just Glanced / Partially Read / Deep Focus / Ghost. This extension exposes that local history to Claude Desktop: ask things like \"what was I reading about X last week\" or \"summarize my browsing session.\" Requires the Tab State Chrome extension (github.com/asyau/tab-state) with MCP sync turned on in its Settings page. Runs entirely on your machine and never sends data anywhere else.",
+  "author": {
+    "name": "asyau",
+    "url": "https://github.com/asyau"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asyau/tab-state"
+  },
+  "homepage": "https://github.com/asyau/tab-state",
+  "documentation": "https://github.com/asyau/tab-state/blob/main/mcp-server/README.md",
+  "support": "https://github.com/asyau/tab-state/issues",
+  "icon": "icon.png",
+  "license": "MIT",
+  "keywords": ["tabs", "browser-history", "productivity", "chrome"],
+  "server": {
+    "type": "node",
+    "entry_point": "server.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server.mjs"],
+      "env": {
+        "TAB_STATE_MCP_PORT": "${user_config.port}"
+      }
+    }
+  },
+  "user_config": {
+    "port": {
+      "type": "number",
+      "title": "Sync port",
+      "description": "Local port the Tab State Chrome extension posts your tracked tabs to. Must match the port set in the extension's Settings → MCP server panel (default 8765 on both sides).",
+      "default": 8765,
+      "min": 1024,
+      "max": 65535,
+      "required": false
+    }
+  }
+}

@@ -14,7 +14,8 @@
 //   TAB_STATE_MCP_PORT=9000 node server.mjs
 
 import http from 'node:http';
-import { pathToFileURL } from 'node:url';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import * as z from 'zod';
@@ -147,10 +148,23 @@ async function main() {
   }
 }
 
-// Compared via pathToFileURL (not a manual `file://${...}` string) because a raw string doesn't
-// percent-encode the path the way import.meta.url does — this repo's own path contains a space
-// ("Application Support"), which silently broke a naive comparison: main() was never called,
-// the process printed nothing and exited 0, and it looked exactly like a successful no-op.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Compared via realpathSync on both sides (not a URL string comparison) because a symlinked
+// ancestor directory breaks that too: import.meta.url resolves through the symlink (Node
+// canonicalizes it), but process.argv[1] keeps whatever path the caller actually typed — on
+// macOS, /tmp is itself a symlink to /private/tmp, so a plain `node /tmp/x/server.mjs` produces
+// import.meta.url = file:///private/tmp/x/server.mjs but argv[1] = /tmp/x/server.mjs, which
+// never matched. That's a real path this file gets invoked from once packaged as an .mcpb.
+// realpathSync resolves both sides to the same canonical filesystem path first, sidestepping
+// symlinks *and* the separate percent-encoding mismatch an earlier version of this check had.
+function isMainModule() {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1]);
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) {
   main().catch((err) => { console.error('tab-state-mcp: fatal', err); process.exit(1); });
 }
