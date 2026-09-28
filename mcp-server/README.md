@@ -25,7 +25,7 @@ Chrome (Tab State extension)  --POST /sync-->  tab-state-mcp (this process)  <--
 | ChatGPT (web) | [Remote mode + a tunnel](#chatgpt-remote-mode) |
 | Any other MCP client | [Run it manually](#install--run-manually-any-mcp-client) |
 
-Whichever you use, also turn on sync in the extension: [Connect it to Chrome](#connect-it-to-chrome).
+Whichever you use, also turn on **"Share my tab history with AI assistants on this computer"** in the extension: [Connect it to Chrome](#connect-it-to-chrome).
 Several assistants can run at the same time — the first copy to start receives the extension's
 syncs on port 8765, the others notice and share the same data file (and take over the port if the
 first one quits).
@@ -115,7 +115,7 @@ npm run build:mcpb                  # -> dist/tab-state-mcp-<version>.mcpb
 
 Then in Claude Desktop: **Settings → Extensions → Install Extension**, pick the `.mcpb` file, done.
 It asks for one optional setting — the sync port (default 8765), which must match the port in the
-Tab State extension's **Settings → Connect your AI assistant** section (under "Port"). Then turn sync on there (see
+Tab State extension's **Settings → Connect your AI assistant** section (under "Advanced"). Then turn sharing on there (see
 [Connect it to Chrome](#connect-it-to-chrome)).
 
 The bundle contains only the manifest, `server.mjs`/`store.mjs`, an icon and production
@@ -140,13 +140,13 @@ stored at `~/.tab-state-mcp/data.json`, created with `0600` permissions (owner r
 a `0700` directory.
 
 Set `TAB_STATE_MCP_PORT` to use a different port than 8765 — and match it in the extension's
-**Settings → Connect your AI assistant** section (under "Port").
+**Settings → Connect your AI assistant** section (under "Advanced").
 
 ## Connect it to Chrome
 
 1. Start the server (`npm start` in this folder), or leave your MCP client to start it.
 2. In the Tab State extension, open **Settings → Connect your AI assistant**.
-3. Check **"Sync your tracked tabs to a local MCP server"**. It's off by default — nothing is sent
+3. Check **"Share my tab history with AI assistants on this computer"**. It's off by default — nothing is sent
    anywhere unless you turn this on.
 4. The status line confirms it's reachable. Tab State syncs automatically on its normal ~30s
    heartbeat from then on, while the extension is running.
@@ -188,6 +188,15 @@ to leave it running.
 
 Every tool reads from the last snapshot the extension synced — it's a point-in-time picture of your
 open (and recently closed) tabs, not a live feed.
+
+## Who can talk to it
+
+The sync endpoint listens on `127.0.0.1` only, so other machines can't reach it. Web pages open in
+your browser *can* send requests to `127.0.0.1`, so the server also refuses any request that carries
+a web page's `Origin`, any request whose `Host` isn't `127.0.0.1`/`localhost` (DNS rebinding), and
+any write that isn't `application/json` (which a page can't send cross-origin without a CORS
+preflight — refused too). Only the Tab State extension, or a local tool you run yourself, can sync.
+Otherwise a malicious page could replace what your assistant reads with instructions of its own.
 
 ## What gets synced, and what doesn't
 

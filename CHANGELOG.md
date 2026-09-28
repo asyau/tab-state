@@ -7,6 +7,14 @@
   exception: an explicitly Purged tab is still cleaned up after its undo window. Needs the new
   `unlimitedStorage` permission, since `chrome.storage.local`'s default 10MB cap could otherwise
   be hit by an active user over months of use.
+- **Security: web pages can no longer write to the local MCP server.** Its sync endpoint used to
+  accept a POST from any origin, so any site open in your browser could replace the tab list your
+  assistant reads with text of its own (verified: a plain `fetch(…, {mode: 'no-cors'})` from a web
+  page did it). It now refuses non-extension `Origin`s, foreign `Host` headers (DNS rebinding) and
+  non-JSON writes, and echoes only the extension's origin in CORS headers, never `*`. Update the
+  plugin (`/plugin update` / `codex plugin marketplace upgrade`) or rebuild the `.mcpb`.
+- Settings' assistant section now speaks plainly: "Share my tab history with AI assistants on this
+  computer", a status of Off / Waiting for assistant / Connected, and the port under "Advanced".
 - **Settings, redesigned to use the whole window**, with a sticky section menu. The MCP panel is
   now **Connect your AI assistant**: three steps (turn on sync → add Tab State to Claude Code,
   Codex, Claude Desktop, ChatGPT or any MCP client, with copy-paste commands → example questions)

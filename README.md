@@ -149,7 +149,7 @@ After pulling new changes, click the ↻ reload icon on the extension's card in 
 Tab State ships a small **MCP server** that runs on your machine and gives your AI assistant four
 read-only tools over your tracked tabs: `search_tabs`, `list_tabs`, `get_tab`, `get_session_recap`.
 Open the extension's **Settings → Connect your AI assistant**: it walks you through it in three steps
-(turn on sync, add Tab State to your assistant with copy-paste commands, try a question) and shows
+(let your assistant see your tabs, add Tab State to it with copy-paste commands, try a question) and shows
 live whether your assistant is connected. The same steps:
 
 | Assistant | How to connect |

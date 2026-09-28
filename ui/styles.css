@@ -817,7 +817,8 @@ kbd { padding: 0 5px; border: 1px solid var(--border); border-radius: 4px; backg
 .st-step p { font-size: 13px; }
 .st-step .note { background: var(--surface); }
 .st-step .note.warn { background: var(--danger-soft); }
-.st-advanced { margin-top: 6px; font-size: 13px; }
+.st-advanced { margin-top: 10px; font-size: 13px; }
+.st-hint { display: block; margin-top: 2px; color: var(--muted); font-size: 12.5px; }
 .st-advanced summary { color: var(--muted); cursor: pointer; }
 .st-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; padding: 3px; border-radius: 9px; background: var(--surface); }
 .st-tab {

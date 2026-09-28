@@ -137,25 +137,26 @@
       <div class="st-mcp-head">
         <div>
           <h2 id="sec-mcp-h">Connect your AI assistant</h2>
-          <p class="muted">Let Claude, Codex or ChatGPT answer <i>"what was I reading about X last week?"</i> from your tracked tabs. A small server on your own machine hands them the same data you see on the board — never page text or anything you selected.</p>
+          <p class="muted">Ask Claude, Codex or ChatGPT things like <i>"what was I reading about X last week?"</i>. They see your tab list — titles, sites, reading time, your notes — never the pages' contents or text you selected.</p>
         </div>
         <span id="mcp-pill" class="pill" hidden></span>
       </div>
 
       <ol class="st-steps">
         <li class="st-step">
-          <h3><span class="st-num" aria-hidden="true">1</span> Turn on sync</h3>
+          <h3><span class="st-num" aria-hidden="true">1</span> Share your tabs</h3>
           <label class="option">
-            <input id="mcp-enabled" type="checkbox">
-            <span>Sync my tracked tabs to the local Tab State server <span class="muted">(off by default; only ever sent to 127.0.0.1)</span></span>
+            <input id="mcp-enabled" type="checkbox" aria-describedby="mcp-enabled-hint">
+            <span>Share my tab history with AI assistants on this computer
+              <span id="mcp-enabled-hint" class="st-hint">Stays on your computer — never uploaded anywhere, and websites can't read it.</span></span>
           </label>
+          <p id="mcp-status" class="note" aria-live="polite"></p>
           <details class="st-advanced">
-            <summary>Port</summary>
+            <summary>Advanced</summary>
             <div class="field-row">
-              <div class="field"><label for="mcp-port">Sync port <span class="muted">(default 8765 — change only if something else uses it)</span></label><input id="mcp-port" type="number" min="1" max="65535" step="1"></div>
+              <div class="field"><label for="mcp-port">Connection port <span class="muted">(8765 — change it only if another app already uses this number, and set the same one in your assistant)</span></label><input id="mcp-port" type="number" min="1" max="65535" step="1"></div>
             </div>
           </details>
-          <p id="mcp-status" class="note" aria-live="polite"></p>
         </li>
 
         <li class="st-step">

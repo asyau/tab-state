@@ -36,16 +36,57 @@ const REMOTE_PORT = Number(process.env.TAB_STATE_MCP_REMOTE_PORT) || 8766;
 const HOST = '127.0.0.1'; // never 0.0.0.0: this must not be reachable from the network
 
 // --- Sync endpoint: the extension POSTs its snapshot here -------------------------------------
+//
+// Binding to 127.0.0.1 keeps other machines out, but not web pages: any site open in your browser
+// can send requests to 127.0.0.1. A page that could POST /sync could overwrite what your assistant
+// reads with text of its choosing — a prompt-injection path. So, before reading a byte of body:
+//  - An Origin header, if present, must be a browser extension's. Browsers always attach the
+//    page's own Origin to cross-origin POSTs and pages can't forge it; local tools (curl, tests)
+//    send none — they already have your files anyway.
+//  - The Host header must be 127.0.0.1/localhost: blocks DNS-rebinding, where a site re-points its
+//    own hostname at 127.0.0.1 to look same-origin.
+//  - Writes must be Content-Type: application/json, which a page can't send cross-origin without a
+//    CORS preflight — and the preflight is refused for anything but an extension origin.
+
+const EXTENSION_ORIGIN = /^(chrome|moz|safari-web)-extension:\/\/[a-z0-9.-]+$/i;
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
+
+export function isAllowedLocalRequest(req) {
+  const origin = req.headers.origin;
+  if (origin != null && !EXTENSION_ORIGIN.test(origin)) return false;
+  const host = String(req.headers.host || '').replace(/:\d+$/, '').toLowerCase();
+  return LOCAL_HOSTS.has(host);
+}
 
 export function createSyncServer({ onSync, dataDir } = {}) {
   return http.createServer((req, res) => {
+    const origin = req.headers.origin;
     const send = (status, body) => {
-      res.writeHead(status, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
+      const headers = { 'content-type': 'application/json' };
+      if (origin && EXTENSION_ORIGIN.test(origin)) {
+        headers['access-control-allow-origin'] = origin; // never '*'
+        headers.vary = 'Origin';
+      }
+      res.writeHead(status, headers);
       res.end(JSON.stringify(body));
     };
-    if (req.method === 'OPTIONS') { send(204, {}); return; } // extension pages are a different origin
+    if (!isAllowedLocalRequest(req)) { send(403, { error: 'forbidden' }); return; }
+    if (req.method === 'OPTIONS') { // preflight from the extension (a different origin)
+      res.writeHead(204, {
+        'access-control-allow-origin': origin || '',
+        'access-control-allow-methods': 'GET, POST',
+        'access-control-allow-headers': 'content-type',
+        vary: 'Origin',
+      });
+      res.end();
+      return;
+    }
     if (req.method === 'GET' && req.url === '/health') { send(200, { ok: true }); return; }
     if (req.method !== 'POST' || req.url !== '/sync') { send(404, { error: 'not found' }); return; }
+    if (!/^application\/json\b/i.test(req.headers['content-type'] || '')) {
+      send(415, { error: 'content-type must be application/json' });
+      return;
+    }
 
     let body = '';
     let tooBig = false;

@@ -226,19 +226,19 @@ async function checkMcpStatus() {
   clearTimeout(mcpTimer);
   const status = $('#mcp-status');
   if (!settings.mcpSync?.enabled) {
-    status.textContent = 'Sync is off — nothing is sent anywhere.';
-    setMcpPill(null);
+    status.textContent = 'Off — your assistant can\'t see your tabs.';
+    setMcpPill('off', 'Off');
     return;
   }
   try {
     const res = await fetch(`http://127.0.0.1:${settings.mcpSync.port}/health`, { signal: AbortSignal.timeout(2000) });
     if (!res.ok) throw new Error(String(res.status));
-    status.textContent = '✅ Connected — your assistant\'s Tab State server is running and receiving your tabs.';
+    status.textContent = '✅ Connected — your assistant can see your tabs.';
     setMcpPill('ok', 'Connected');
     mcpTimer = setTimeout(checkMcpStatus, 30_000);
   } catch {
-    status.textContent = 'Waiting for the server… It starts automatically when your assistant (with the plugin from step 2) is running — open Claude Code, Codex or Claude Desktop and this turns green.';
-    setMcpPill('warn', 'Not connected');
+    status.textContent = 'On — waiting for your assistant. Do step 2, then open Claude Code, Codex or Claude Desktop: this turns green by itself.';
+    setMcpPill('warn', 'Waiting for assistant');
     mcpTimer = setTimeout(checkMcpStatus, 5_000);
   }
 }
