@@ -209,17 +209,37 @@ $('#grouping-enabled').addEventListener('change', async (e) => {
   await saveSettings(settings);
 });
 
-// --- MCP server sync (local, off by default) --------------------------------------------------
+// --- Connect your AI assistant (MCP sync: local, off by default) -------------------------------
 
+let mcpTimer = 0;
+
+function setMcpPill(kind, text) {
+  const pill = $('#mcp-pill');
+  pill.hidden = !kind;
+  pill.className = `pill${kind === 'ok' ? ' on' : kind === 'warn' ? ' warn' : ''}`;
+  pill.textContent = text || '';
+}
+
+/** Is the local server up? It runs whenever an assistant with the plugin (or the .mcpb) has
+ *  started it — so while sync is on and it isn't reachable yet, keep checking quietly. */
 async function checkMcpStatus() {
+  clearTimeout(mcpTimer);
   const status = $('#mcp-status');
-  if (!settings.mcpSync?.enabled) { status.textContent = ''; return; }
-  status.textContent = 'Checking…';
+  if (!settings.mcpSync?.enabled) {
+    status.textContent = 'Sync is off — nothing is sent anywhere.';
+    setMcpPill(null);
+    return;
+  }
   try {
     const res = await fetch(`http://127.0.0.1:${settings.mcpSync.port}/health`, { signal: AbortSignal.timeout(2000) });
-    status.textContent = res.ok ? '✅ Connected — the local server is running.' : `⚠️ Server responded with ${res.status}.`;
+    if (!res.ok) throw new Error(String(res.status));
+    status.textContent = '✅ Connected — your assistant\'s Tab State server is running and receiving your tabs.';
+    setMcpPill('ok', 'Connected');
+    mcpTimer = setTimeout(checkMcpStatus, 30_000);
   } catch {
-    status.textContent = '⚠️ Not reachable. Start it with `npm start` in mcp-server/ (see mcp-server/README.md).';
+    status.textContent = 'Waiting for the server… It starts automatically when your assistant (with the plugin from step 2) is running — open Claude Code, Codex or Claude Desktop and this turns green.';
+    setMcpPill('warn', 'Not connected');
+    mcpTimer = setTimeout(checkMcpStatus, 5_000);
   }
 }
 
@@ -236,6 +256,77 @@ $('#mcp-port').addEventListener('change', async (e) => {
   await saveSettings(settings);
   checkMcpStatus();
 });
+
+// Assistant tabs (WAI-ARIA tabs pattern: arrow keys move between tabs). The last one picked is
+// remembered per browser — a convenience only, so storage failures are ignored.
+const ASSISTANT_KEY = 'ts-settings-assistant';
+const tabs = [...document.querySelectorAll('.st-tab')];
+function selectAssistant(pane, { focus = false } = {}) {
+  for (const tab of tabs) {
+    const on = tab.dataset.pane === pane;
+    tab.setAttribute('aria-selected', String(on));
+    tab.tabIndex = on ? 0 : -1;
+    $(`#pane-${tab.dataset.pane}`).hidden = !on;
+    if (on && focus) tab.focus();
+  }
+  try { localStorage.setItem(ASSISTANT_KEY, pane); } catch { /* optional */ }
+}
+tabs.forEach((tab, i) => {
+  tab.addEventListener('click', () => selectAssistant(tab.dataset.pane));
+  tab.addEventListener('keydown', (e) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+    if (e.key === 'Home' || e.key === 'End' || step) {
+      e.preventDefault();
+      const j = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (i + step + tabs.length) % tabs.length;
+      selectAssistant(tabs[j].dataset.pane, { focus: true });
+    }
+  });
+});
+let savedAssistant = null;
+try { savedAssistant = localStorage.getItem(ASSISTANT_KEY); } catch { /* optional */ }
+selectAssistant(tabs.some((t) => t.dataset.pane === savedAssistant) ? savedAssistant : 'claude-code');
+
+async function copyText(text, button, doneLabel = 'Copied') {
+  const label = button.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    button.textContent = doneLabel;
+  } catch {
+    button.textContent = 'Press Ctrl+C';
+    const range = document.createRange();
+    range.selectNodeContents(button.closest('.st-cmd')?.querySelector('code') ?? button);
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+  }
+  button.classList.add('done');
+  setTimeout(() => { button.textContent = label; button.classList.remove('done'); }, 1600);
+}
+document.querySelectorAll('.st-copy').forEach((btn) => btn.addEventListener('click', () =>
+  copyText(btn.closest('.st-cmd').querySelector('code').textContent, btn)));
+document.querySelectorAll('.st-prompt').forEach((btn) => btn.addEventListener('click', async () => {
+  const text = btn.textContent;
+  await copyText(text, btn, '✓ Copied — paste it into your assistant');
+}));
+
+// Section menu: highlight the section you're reading — the last one whose top has scrolled past
+// the top of the window. Sections side by side (same top) keep the first, so Summaries (not
+// Sorting) is highlighted at the top of the page.
+const navLinks = [...document.querySelectorAll('.st-nav-link')];
+const navTargets = navLinks.map((a) => document.querySelector(a.getAttribute('href')));
+function updateNav() {
+  let active = 0;
+  let activeTop = -Infinity;
+  navTargets.forEach((t, i) => {
+    const top = t?.getBoundingClientRect().top ?? Infinity;
+    if (top <= 140 && top > activeTop + 1) { active = i; activeTop = top; }
+  });
+  // At the very bottom the last sections can't reach the top; highlight the last one.
+  if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) active = navLinks.length - 1;
+  navLinks.forEach((a, i) => a.classList.toggle('active', i === active));
+}
+window.addEventListener('scroll', updateNav, { passive: true });
+window.addEventListener('resize', updateNav);
+updateNav();
 
 // --- Daily check-list management --------------------------------------------------------------
 

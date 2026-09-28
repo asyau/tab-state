@@ -7,146 +7,240 @@
   <link rel="icon" href="../icons/icon32.png">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <div class="page">
-    <p><a href="dashboard.html" class="btn subtle small">← Dashboard</a></p>
-    <h1>Settings</h1>
-    <p class="muted">Tab State works with no setup. These options tune the summary provider, how tabs are sorted, and a couple of optional extras.</p>
+<body class="settings-page">
+  <header class="topbar">
+    <div class="brand">
+      <img src="../icons/icon48.png" alt="" width="28" height="28">
+      <div>
+        <h1>Settings</h1>
+        <p class="muted">Works with no setup — everything here is optional.</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <a href="dashboard.html" class="btn subtle">← Board</a>
+      <a href="history.html" class="btn subtle">History</a>
+    </div>
+  </header>
 
-    <form id="form" class="panel" autocomplete="off">
-      <h2>Summary provider</h2>
-      <div id="providers"></div>
-      <p id="nano-status" class="note"></p>
-      <div class="row"><button id="enable-nano" type="button" class="btn" hidden>Download on-device model</button></div>
+  <div class="st-layout">
+    <nav class="st-nav" aria-label="Settings sections">
+      <a href="#form" class="st-nav-link">Summaries</a>
+      <a href="#thresholds-form" class="st-nav-link">Sorting</a>
+      <a href="#sec-mcp" class="st-nav-link">AI assistants</a>
+      <a href="#sec-grouping" class="st-nav-link">Tab grouping</a>
+      <a href="#sec-checklist" class="st-nav-link">Check-list</a>
+      <a href="#sec-data" class="st-nav-link">Your data</a>
+    </nav>
 
-      <fieldset id="openai-fields" class="panel" aria-label="OpenAI-compatible API settings" hidden>
-        <h2>OpenAI-compatible API</h2>
-        <div class="field">
-          <label for="openai-preset">Preset</label>
-          <select id="openai-preset"></select>
-        </div>
-        <div class="field">
-          <label for="openai-base">Base URL</label>
-          <input id="openai-base" type="url" placeholder="https://api.openai.com/v1">
-        </div>
-        <div class="field">
-          <label for="openai-key">API key <span class="muted">(leave empty for Ollama / LM Studio)</span></label>
-          <input id="openai-key" type="password" spellcheck="false">
-        </div>
-        <div class="field">
-          <label for="openai-model">Model</label>
-          <input id="openai-model" type="text" placeholder="e.g. gpt-4o-mini, llama3.2, qwen2.5:3b" spellcheck="false">
-        </div>
-        <p class="note">Ollama: start it with <code>OLLAMA_ORIGINS="chrome-extension://*" ollama serve</code> so the extension is allowed to call it.</p>
-      </fieldset>
+    <main class="st-main">
+      <div class="st-row st-row-2">
+        <form id="form" class="panel st-section" autocomplete="off" aria-labelledby="sec-provider-h">
+        <h2 id="sec-provider-h">Summary provider</h2>
+        <p class="muted">Optional — Tab State writes a basic summary with no AI at all.</p>
+        <div id="providers"></div>
+        <p id="nano-status" class="note"></p>
+        <div class="row"><button id="enable-nano" type="button" class="btn" hidden>Download on-device model</button></div>
 
-      <fieldset id="anthropic-fields" class="panel" aria-label="Anthropic API settings" hidden>
-        <h2>Anthropic API</h2>
-        <div class="field">
-          <label for="anthropic-key">API key</label>
-          <input id="anthropic-key" type="password" spellcheck="false">
-        </div>
-        <div class="field">
-          <label for="anthropic-model">Model</label>
-          <input id="anthropic-model" type="text" spellcheck="false">
-        </div>
-      </fieldset>
+        <fieldset id="openai-fields" class="panel" aria-label="OpenAI-compatible API settings" hidden>
+          <h2>OpenAI-compatible API</h2>
+          <div class="field">
+            <label for="openai-preset">Preset</label>
+            <select id="openai-preset"></select>
+          </div>
+          <div class="field">
+            <label for="openai-base">Base URL</label>
+            <input id="openai-base" type="url" placeholder="https://api.openai.com/v1">
+          </div>
+          <div class="field">
+            <label for="openai-key">API key <span class="muted">(leave empty for Ollama / LM Studio)</span></label>
+            <input id="openai-key" type="password" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="openai-model">Model</label>
+            <input id="openai-model" type="text" placeholder="e.g. gpt-4o-mini, llama3.2, qwen2.5:3b" spellcheck="false">
+          </div>
+          <p class="note">Ollama: start it with <code>OLLAMA_ORIGINS="chrome-extension://*" ollama serve</code> so the extension is allowed to call it.</p>
+        </fieldset>
 
-      <fieldset id="hosted-fields" class="panel" aria-label="Tab State Pro (hosted) settings" hidden>
-        <h2>Tab State Pro (hosted)</h2>
-        <p class="muted">
-          No API key to manage — summaries run through a small proxy that holds the key for you.
-          This needs a Worker URL from your own deployment; see <code>pro-proxy/README.md</code> in
-          the repo (this isn't a public service you can just turn on).
+        <fieldset id="anthropic-fields" class="panel" aria-label="Anthropic API settings" hidden>
+          <h2>Anthropic API</h2>
+          <div class="field">
+            <label for="anthropic-key">API key</label>
+            <input id="anthropic-key" type="password" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="anthropic-model">Model</label>
+            <input id="anthropic-model" type="text" spellcheck="false">
+          </div>
+        </fieldset>
+
+        <fieldset id="hosted-fields" class="panel" aria-label="Tab State Pro (hosted) settings" hidden>
+          <h2>Tab State Pro (hosted)</h2>
+          <p class="muted">
+            No API key to manage — summaries run through a small proxy that holds the key for you.
+            This needs a Worker URL from your own deployment; see <code>pro-proxy/README.md</code> in
+            the repo (this isn't a public service you can just turn on).
+          </p>
+          <div class="field">
+            <label for="hosted-worker-url">Worker URL</label>
+            <input id="hosted-worker-url" type="url" placeholder="https://your-worker.your-subdomain.workers.dev" spellcheck="false">
+          </div>
+          <p id="hosted-status" class="note"></p>
+          <div class="row">
+            <button id="hosted-upgrade" type="button" class="btn subtle">Upgrade / manage subscription</button>
+            <button id="hosted-refresh" type="button" class="btn subtle">Refresh status</button>
+          </div>
+        </fieldset>
+
+        <p id="privacy" class="note warn" hidden>
+          With a cloud provider, page titles, descriptions, and your reading stats (not page contents) are sent to that provider.
+          API keys are stored unencrypted in this browser profile.
         </p>
-        <div class="field">
-          <label for="hosted-worker-url">Worker URL</label>
-          <input id="hosted-worker-url" type="url" placeholder="https://your-worker.your-subdomain.workers.dev" spellcheck="false">
-        </div>
-        <p id="hosted-status" class="note"></p>
+
         <div class="row">
-          <button id="hosted-upgrade" type="button" class="btn subtle">Upgrade / manage subscription</button>
-          <button id="hosted-refresh" type="button" class="btn subtle">Refresh status</button>
+          <button type="submit" class="btn primary">Save</button>
+          <button id="test" type="button" class="btn">Test with a sample tab</button>
+          <span id="saved" class="muted" role="status" hidden>Saved</span>
         </div>
-      </fieldset>
+        <div id="test-result" class="result" aria-live="polite"></div>
+      </form>
+        <form id="thresholds-form" class="panel st-section" autocomplete="off" aria-labelledby="sec-sorting-h">
+        <h2 id="sec-sorting-h">How tabs are sorted</h2>
+        <p class="muted">All fields in seconds (scroll fields in %). Changes apply immediately.</p>
+        <div class="field-row">
+          <div class="field"><label for="t-ghostMaxMs">👻 Ghost: active for under</label><input id="t-ghostMaxMs" type="number" min="0" step="1"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="t-glancedMaxMs">👁️ Just Glanced: active for under</label><input id="t-glancedMaxMs" type="number" min="0" step="1"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="t-deepMinMs">🎯 Deep Focus: active for at least</label><input id="t-deepMinMs" type="number" min="0" step="1"></div>
+          <div class="field"><label for="t-deepScrollPct">…or scrolled at least (%)</label><input id="t-deepScrollPct" type="number" min="0" max="100" step="1"></div>
+          <div class="field"><label for="t-deepScrollMinMs">…for at least (sec)</label><input id="t-deepScrollMinMs" type="number" min="0" step="1"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="t-interactedMinMs">…or copied/highlighted, after being active at least (sec)</label><input id="t-interactedMinMs" type="number" min="0" step="1"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label for="t-partialScrollPct">📖 Partially Read: scrolled at least (%)</label><input id="t-partialScrollPct" type="number" min="0" max="100" step="1"></div>
+          <div class="field"><label for="t-partialScrollMinMs">…for at least (sec)</label><input id="t-partialScrollMinMs" type="number" min="0" step="1"></div>
+        </div>
+        <div class="row">
+          <button type="submit" class="btn primary">Save</button>
+          <button id="thresholds-reset" type="button" class="btn subtle">Reset to defaults</button>
+          <span id="thresholds-saved" class="muted" role="status" hidden>Saved</span>
+        </div>
+      </form>
+      </div>
 
-      <p id="privacy" class="note warn" hidden>
-        With a cloud provider, page titles, descriptions, and your reading stats (not page contents) are sent to that provider.
-        API keys are stored unencrypted in this browser profile.
-      </p>
+      <section id="sec-mcp" class="panel st-section st-mcp" aria-labelledby="sec-mcp-h">
+      <div class="st-mcp-head">
+        <div>
+          <h2 id="sec-mcp-h">Connect your AI assistant</h2>
+          <p class="muted">Let Claude, Codex or ChatGPT answer <i>"what was I reading about X last week?"</i> from your tracked tabs. A small server on your own machine hands them the same data you see on the board — never page text or anything you selected.</p>
+        </div>
+        <span id="mcp-pill" class="pill" hidden></span>
+      </div>
 
-      <div class="row">
-        <button type="submit" class="btn primary">Save</button>
-        <button id="test" type="button" class="btn">Test with a sample tab</button>
-        <span id="saved" class="muted" role="status" hidden>Saved</span>
-      </div>
-      <div id="test-result" class="result" aria-live="polite"></div>
-    </form>
+      <ol class="st-steps">
+        <li class="st-step">
+          <h3><span class="st-num" aria-hidden="true">1</span> Turn on sync</h3>
+          <label class="option">
+            <input id="mcp-enabled" type="checkbox">
+            <span>Sync my tracked tabs to the local Tab State server <span class="muted">(off by default; only ever sent to 127.0.0.1)</span></span>
+          </label>
+          <details class="st-advanced">
+            <summary>Port</summary>
+            <div class="field-row">
+              <div class="field"><label for="mcp-port">Sync port <span class="muted">(default 8765 — change only if something else uses it)</span></label><input id="mcp-port" type="number" min="1" max="65535" step="1"></div>
+            </div>
+          </details>
+          <p id="mcp-status" class="note" aria-live="polite"></p>
+        </li>
 
-    <form id="thresholds-form" class="panel" autocomplete="off">
-      <h2>How tabs are sorted</h2>
-      <p class="muted">All fields in seconds (scroll fields in %). Changes apply immediately.</p>
-      <div class="field-row">
-        <div class="field"><label for="t-ghostMaxMs">👻 Ghost: active for under</label><input id="t-ghostMaxMs" type="number" min="0" step="1"></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label for="t-glancedMaxMs">👁️ Just Glanced: active for under</label><input id="t-glancedMaxMs" type="number" min="0" step="1"></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label for="t-deepMinMs">🎯 Deep Focus: active for at least</label><input id="t-deepMinMs" type="number" min="0" step="1"></div>
-        <div class="field"><label for="t-deepScrollPct">…or scrolled at least (%)</label><input id="t-deepScrollPct" type="number" min="0" max="100" step="1"></div>
-        <div class="field"><label for="t-deepScrollMinMs">…for at least (sec)</label><input id="t-deepScrollMinMs" type="number" min="0" step="1"></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label for="t-interactedMinMs">…or copied/highlighted, after being active at least (sec)</label><input id="t-interactedMinMs" type="number" min="0" step="1"></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label for="t-partialScrollPct">📖 Partially Read: scrolled at least (%)</label><input id="t-partialScrollPct" type="number" min="0" max="100" step="1"></div>
-        <div class="field"><label for="t-partialScrollMinMs">…for at least (sec)</label><input id="t-partialScrollMinMs" type="number" min="0" step="1"></div>
-      </div>
-      <div class="row">
-        <button type="submit" class="btn primary">Save</button>
-        <button id="thresholds-reset" type="button" class="btn subtle">Reset to defaults</button>
-        <span id="thresholds-saved" class="muted" role="status" hidden>Saved</span>
-      </div>
-    </form>
+        <li class="st-step">
+          <h3><span class="st-num" aria-hidden="true">2</span> Add Tab State to your assistant</h3>
+          <div class="st-tabs" role="tablist" aria-label="AI assistant">
+            <button class="st-tab" role="tab" type="button" id="tab-claude-code" aria-controls="pane-claude-code" data-pane="claude-code">Claude Code</button>
+            <button class="st-tab" role="tab" type="button" id="tab-codex" aria-controls="pane-codex" data-pane="codex">Codex</button>
+            <button class="st-tab" role="tab" type="button" id="tab-claude-desktop" aria-controls="pane-claude-desktop" data-pane="claude-desktop">Claude Desktop</button>
+            <button class="st-tab" role="tab" type="button" id="tab-chatgpt" aria-controls="pane-chatgpt" data-pane="chatgpt">ChatGPT</button>
+            <button class="st-tab" role="tab" type="button" id="tab-other" aria-controls="pane-other" data-pane="other">Other</button>
+          </div>
 
-    <section class="panel">
-      <h2>AI-assisted tab grouping</h2>
-      <label class="option">
-        <input id="grouping-enabled" type="checkbox">
-        <span>Show a "Group related tabs" button on the dashboard (uses your summary provider above; off by default)</span>
-      </label>
-      <p class="muted">Tab State's main view always sorts by how you engaged with a page, not what it is — this is an optional extra, never automatic.</p>
+          <div class="st-pane" role="tabpanel" id="pane-claude-code" aria-labelledby="tab-claude-code">
+            <p><span class="st-badge">Plugin · recommended</span> Run these two commands inside Claude Code, then restart the session:</p>
+            <div class="st-cmd"><code>/plugin marketplace add asyau/tab-state</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
+            <div class="st-cmd"><code>/plugin install tab-state@tab-state</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
+            <p class="muted">Claude Code starts the Tab State server itself whenever it needs it — nothing else to install or keep running. Needs Node.js 18+. Check it with <code>/mcp</code>: <b>tab-state</b> should show as connected.</p>
+          </div>
+
+          <div class="st-pane" role="tabpanel" id="pane-codex" aria-labelledby="tab-codex" hidden>
+            <p><span class="st-badge">Plugin · recommended</span> In a terminal:</p>
+            <div class="st-cmd"><code>codex plugin marketplace add asyau/tab-state</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
+            <div class="st-cmd"><code>codex plugin add tab-state@tab-state</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
+            <p class="muted">Works in the Codex CLI, IDE extension and app. Codex starts the server on its own; needs Node.js 18+. Check it with <code>codex mcp list</code>.</p>
+          </div>
+
+          <div class="st-pane" role="tabpanel" id="pane-claude-desktop" aria-labelledby="tab-claude-desktop" hidden>
+            <p><span class="st-badge">One-click installer</span> Build the installer once from your copy of the repo:</p>
+            <div class="st-cmd"><code>cd tab-state/mcp-server && npm install && npm run build:mcpb</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
+            <p>Then in Claude Desktop: <b>Settings → Extensions → Install Extension…</b> and pick <code>mcp-server/dist/tab-state-mcp-1.0.0.mcpb</code>. Node comes bundled with Claude Desktop.</p>
+            <p class="muted">Building needs <code>npm install -g @anthropic-ai/mcpb</code> once. Prefer editing config? Add this to <code>claude_desktop_config.json</code> instead (use your real path):</p>
+            <div class="st-cmd"><code>"tab-state": {{ "command": "node", "args": ["/path/to/tab-state/plugins/tab-state/server/tab-state-mcp.mjs"] }}</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
+          </div>
+
+          <div class="st-pane" role="tabpanel" id="pane-chatgpt" aria-labelledby="tab-chatgpt" hidden>
+            <p>ChatGPT can only reach servers on the internet, so this one takes a few more steps (developer mode on Plus, Pro, Business, Enterprise or Education, on the web):</p>
+            <ol class="st-substeps">
+              <li>Start remote mode: <div class="st-cmd"><code>cd tab-state/mcp-server && npm install && npm run remote</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div> It prints a private URL ending in <code>/mcp/&lt;token&gt;</code>.</li>
+              <li>Expose <b>only</b> that port over HTTPS, e.g. <div class="st-cmd"><code>cloudflared tunnel --url http://127.0.0.1:8766</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div></li>
+              <li>At <a href="https://chatgpt.com/plugins" target="_blank" rel="noopener">chatgpt.com/plugins</a>, create a developer-mode app with <code>https://&lt;your-tunnel&gt;/mcp/&lt;token&gt;</code> and <b>No Authentication</b>.</li>
+            </ol>
+            <p class="note warn">Anyone with that full URL can read your tracked tabs while the tunnel runs — treat it like a password. Only the read-only tools are exposed; sync is never reachable through it. <a href="https://github.com/asyau/tab-state/blob/main/mcp-server/README.md#chatgpt-remote-mode" target="_blank" rel="noopener">Security details</a></p>
+          </div>
+
+          <div class="st-pane" role="tabpanel" id="pane-other" aria-labelledby="tab-other" hidden>
+            <p>Any MCP client that can launch a local (stdio) server — no <code>npm install</code> needed:</p>
+            <div class="st-cmd"><code>node /path/to/tab-state/plugins/tab-state/server/tab-state-mcp.mjs</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
+            <p class="muted">Tools: <code>search_tabs</code>, <code>list_tabs</code>, <code>get_tab</code>, <code>get_session_recap</code>. Several assistants can run at once — they share the same data.</p>
+          </div>
+        </li>
+
+        <li class="st-step">
+          <h3><span class="st-num" aria-hidden="true">3</span> Ask away</h3>
+          <div class="st-prompts">
+            <button class="st-prompt" type="button">What was I reading about Rust async last week, and where did I stop?</button>
+            <button class="st-prompt" type="button">Summarize my browsing session today.</button>
+            <button class="st-prompt" type="button">Which of my open tabs can I safely close?</button>
+            <button class="st-prompt" type="button">Find that article I highlighted about pricing.</button>
+          </div>
+          <p class="muted">Click one to copy it. <a href="https://github.com/asyau/tab-state/blob/main/mcp-server/README.md" target="_blank" rel="noopener">Full guide</a></p>
+        </li>
+      </ol>
     </section>
 
-    <section class="panel">
-      <h2>MCP server (local, optional)</h2>
-      <label class="option">
-        <input id="mcp-enabled" type="checkbox">
-        <span>Sync your tracked tabs to a local MCP server, so Claude (or any MCP client) can answer things like "what was I reading about X last week"</span>
-      </label>
-      <div class="field-row">
-        <div class="field"><label for="mcp-port">Port</label><input id="mcp-port" type="number" min="1" max="65535" step="1"></div>
+      <div class="st-row st-row-3">
+        <section id="sec-grouping" class="panel st-section">
+        <h2>AI-assisted tab grouping</h2>
+        <label class="option">
+          <input id="grouping-enabled" type="checkbox">
+          <span>Show a "Group related tabs" button on the dashboard (uses your summary provider above; off by default)</span>
+        </label>
+        <p class="muted">Tab State's main view always sorts by how you engaged with a page, not what it is — this is an optional extra, never automatic.</p>
+      </section>
+        <section id="sec-checklist" class="panel st-section">
+        <h2>Today's check-list</h2>
+        <p class="muted">Sites you want a daily reminder to check. Add one from a tab's card on the dashboard.</p>
+        <div id="watchlist" class="watchlist-manage"></div>
+      </section>
+        <section id="sec-data" class="panel st-section">
+        <h2>Your data</h2>
+        <p class="muted">Everything is stored locally in this browser and kept forever — see the full history on the <a href="history.html">History page</a>. A purged tab is the one exception: it's deleted about an hour later.</p>
+        <div class="row"><button id="clear" type="button" class="btn danger">Delete all tracked data</button></div>
+      </section>
       </div>
-      <p id="mcp-status" class="note"></p>
-      <p class="muted">
-        Runs entirely on your machine — see <code>mcp-server/README.md</code> in the repo to install and
-        connect it to Claude Desktop or Claude Code. Nothing is sent anywhere except to that local process.
-      </p>
-    </section>
-
-    <section class="panel">
-      <h2>Today's check-list</h2>
-      <p class="muted">Sites you want a daily reminder to check. Add one from a tab's card on the dashboard.</p>
-      <div id="watchlist" class="watchlist-manage"></div>
-    </section>
-
-    <section class="panel">
-      <h2>Your data</h2>
-      <p class="muted">Everything is stored locally in this browser and kept forever — see the full history on the <a href="history.html">History page</a>. A purged tab is the one exception: it's deleted about an hour later.</p>
-      <div class="row"><button id="clear" type="button" class="btn danger">Delete all tracked data</button></div>
-    </section>
+    </main>
   </div>
   <script type="module" src="settings.js"></script>
 </body>

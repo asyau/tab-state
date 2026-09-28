@@ -115,7 +115,7 @@ npm run build:mcpb                  # -> dist/tab-state-mcp-<version>.mcpb
 
 Then in Claude Desktop: **Settings → Extensions → Install Extension**, pick the `.mcpb` file, done.
 It asks for one optional setting — the sync port (default 8765), which must match the port in the
-Tab State extension's **Settings → MCP server** panel. Then turn sync on there (see
+Tab State extension's **Settings → Connect your AI assistant** section (under "Port"). Then turn sync on there (see
 [Connect it to Chrome](#connect-it-to-chrome)).
 
 The bundle contains only the manifest, `server.mjs`/`store.mjs`, an icon and production
@@ -140,12 +140,12 @@ stored at `~/.tab-state-mcp/data.json`, created with `0600` permissions (owner r
 a `0700` directory.
 
 Set `TAB_STATE_MCP_PORT` to use a different port than 8765 — and match it in the extension's
-**Settings → MCP server** panel.
+**Settings → Connect your AI assistant** section (under "Port").
 
 ## Connect it to Chrome
 
 1. Start the server (`npm start` in this folder), or leave your MCP client to start it.
-2. In the Tab State extension, open **Settings → MCP server (local, optional)**.
+2. In the Tab State extension, open **Settings → Connect your AI assistant**.
 3. Check **"Sync your tracked tabs to a local MCP server"**. It's off by default — nothing is sent
    anywhere unless you turn this on.
 4. The status line confirms it's reachable. Tab State syncs automatically on its normal ~30s

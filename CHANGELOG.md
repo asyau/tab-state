@@ -7,6 +7,10 @@
   exception: an explicitly Purged tab is still cleaned up after its undo window. Needs the new
   `unlimitedStorage` permission, since `chrome.storage.local`'s default 10MB cap could otherwise
   be hit by an active user over months of use.
+- **Settings, redesigned to use the whole window**, with a sticky section menu. The MCP panel is
+  now **Connect your AI assistant**: three steps (turn on sync → add Tab State to Claude Code,
+  Codex, Claude Desktop, ChatGPT or any MCP client, with copy-paste commands → example questions)
+  and a live status that turns green by itself once your assistant has started the server.
 - **History page, redesigned to use the whole window.** Two panes: the list on the left, a
   details panel on the right that follows the hovered or ↑/↓-selected tab (click pins it; Enter
   or double-click jumps to / reopens the tab) and lists your other visits to the same site.

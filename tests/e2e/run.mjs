@@ -453,6 +453,7 @@ await new Promise((r) => mcpListener.listen(0, '127.0.0.1', r));
 const mcpPort = mcpListener.address().port;
 
 await settings.bringToFront();
+await settings.click('#sec-mcp .st-advanced summary'); // the port lives under a "Port" disclosure
 await settings.fill('#mcp-port', String(mcpPort));
 await settings.locator('#mcp-port').dispatchEvent('change');
 await settings.check('#mcp-enabled');
