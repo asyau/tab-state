@@ -16,6 +16,7 @@
   <img src="https://img.shields.io/badge/privacy-100%25%20local-2f8a5b" alt="100% local">
   <a href="#-ask-your-ai-about-your-tabs"><img src="https://img.shields.io/badge/works%20with-Claude%20·%20Codex%20·%20ChatGPT-d97757" alt="Works with Claude, Codex and ChatGPT"></a>
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-2f8a5b" alt="PRs welcome"></a>
+  <a href="https://github.com/sponsors/asyau"><img src="https://img.shields.io/github/sponsors/asyau?label=sponsor&logo=githubsponsors&color=ea4aaa" alt="Sponsor on GitHub"></a>
 </p>
 
 <p align="center">
@@ -324,6 +325,8 @@ Tab State is open source and contributions are very welcome — code or not.
   and read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests and house rules (short version:
   `npm install && npm test`, no build step, privacy first).
 - ⭐ Using it and liking it? A star helps other people find it.
+- 💖 Want to support the work? [Sponsor on GitHub](https://github.com/sponsors/asyau) — Tab State
+  stays free either way.
 
 Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
