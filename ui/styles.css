@@ -949,6 +949,9 @@ kbd { padding: 0 5px; border: 1px solid var(--border); border-radius: 4px; backg
 .st-copy.done { border-color: var(--focus); color: var(--focus); }
 .st-copy:focus-visible, .st-prompt:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .st-substeps { margin: 8px 0; padding-left: 18px; font-size: 13px; }
+.st-download { margin: 2px 0; }
+.st-callout { margin: 8px 0; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--text); font-size: 13px; }
+.st-callout .hs-linklike { font-weight: 600; }
 .st-substeps li { margin-bottom: 8px; }
 .st-prompts { display: flex; flex-direction: column; gap: 6px; }
 .st-prompt {

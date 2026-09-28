@@ -1,0 +1,54 @@
+# Builds the one-click Claude Desktop installer (mcp-server/ packed as a .mcpb) and publishes it at a
+# link that never changes, so Settings and the README can say "Download" instead of "build it":
+#
+#   https://github.com/asyau/tab-state/releases/download/claude-desktop/tab-state.mcpb
+#
+# Re-runs whenever the server changes on main; the file on the "claude-desktop" release is replaced.
+name: claude-desktop
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mcp-server/**'
+      - 'icons/icon128.png'
+      - '.github/workflows/claude-desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write # to create/update the release asset
+
+concurrency:
+  group: claude-desktop-release
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Test the server
+        working-directory: mcp-server
+        run: |
+          npm ci
+          npm test
+      - name: Build the .mcpb
+        working-directory: mcp-server
+        run: |
+          npm install -g @anthropic-ai/mcpb
+          npm run build:mcpb
+          cp dist/*.mcpb ../tab-state.mcpb
+      - name: Publish to the claude-desktop release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view claude-desktop >/dev/null 2>&1; then
+            gh release create claude-desktop \
+              --title "Tab State for Claude Desktop" \
+              --notes "One-click installer for Claude Desktop. Download tab-state.mcpb, then double-click it (or Claude Desktop → Settings → Extensions → Install Extension…). Rebuilt automatically from main whenever the MCP server changes. Then turn on \"Share my tab history with AI assistants on this computer\" in the Tab State extension's Settings." \
+              --latest=false
+          fi
+          gh release upload claude-desktop tab-state.mcpb --clobber

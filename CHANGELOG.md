@@ -7,6 +7,11 @@
   exception: an explicitly Purged tab is still cleaned up after its undo window. Needs the new
   `unlimitedStorage` permission, since `chrome.storage.local`'s default 10MB cap could otherwise
   be hit by an active user over months of use.
+- **Claude Desktop: one-click download.** A GitHub Action builds the `.mcpb` on every server change
+  and publishes it at a fixed link; Settings' assistant guide now opens on Claude Desktop with a
+  Download button. The Claude Code tab says its `/plugin` commands are for Claude Code in a terminal
+  on the same computer as Chrome — not the Claude app or cloud sessions ("Plugins aren't available
+  in this environment").
 - **Tab groups on the dashboard.** "Group related tabs" made real Chrome tab groups, but only
   Chrome's tab bar showed them — the dashboard looked unchanged apart from a toast. A "Tab groups"
   section now lists every Chrome group (made here or by hand): its color and name, its tabs with

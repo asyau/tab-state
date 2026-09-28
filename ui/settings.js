@@ -284,7 +284,9 @@ tabs.forEach((tab, i) => {
 });
 let savedAssistant = null;
 try { savedAssistant = localStorage.getItem(ASSISTANT_KEY); } catch { /* optional */ }
-selectAssistant(tabs.some((t) => t.dataset.pane === savedAssistant) ? savedAssistant : 'claude-code');
+selectAssistant(tabs.some((t) => t.dataset.pane === savedAssistant) ? savedAssistant : 'claude-desktop');
+document.querySelectorAll('[data-go-pane]').forEach((btn) => btn.addEventListener('click', () =>
+  selectAssistant(btn.dataset.goPane, { focus: true })));
 
 async function copyText(text, button, doneLabel = 'Copied') {
   const label = button.textContent;

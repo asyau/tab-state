@@ -162,33 +162,43 @@
         <li class="st-step">
           <h3><span class="st-num" aria-hidden="true">2</span> Add Tab State to your assistant</h3>
           <div class="st-tabs" role="tablist" aria-label="AI assistant">
+            <button class="st-tab" role="tab" type="button" id="tab-claude-desktop" aria-controls="pane-claude-desktop" data-pane="claude-desktop">Claude Desktop</button>
             <button class="st-tab" role="tab" type="button" id="tab-claude-code" aria-controls="pane-claude-code" data-pane="claude-code">Claude Code</button>
             <button class="st-tab" role="tab" type="button" id="tab-codex" aria-controls="pane-codex" data-pane="codex">Codex</button>
-            <button class="st-tab" role="tab" type="button" id="tab-claude-desktop" aria-controls="pane-claude-desktop" data-pane="claude-desktop">Claude Desktop</button>
             <button class="st-tab" role="tab" type="button" id="tab-chatgpt" aria-controls="pane-chatgpt" data-pane="chatgpt">ChatGPT</button>
             <button class="st-tab" role="tab" type="button" id="tab-other" aria-controls="pane-other" data-pane="other">Other</button>
           </div>
 
-          <div class="st-pane" role="tabpanel" id="pane-claude-code" aria-labelledby="tab-claude-code">
-            <p><span class="st-badge">Plugin · recommended</span> Run these two commands inside Claude Code, then restart the session:</p>
+          <div class="st-pane" role="tabpanel" id="pane-claude-code" aria-labelledby="tab-claude-code" hidden>
+            <p><span class="st-badge">Plugin</span> For <b>Claude Code</b>, the terminal app you start with <code>claude</code>. Run these inside it, then restart the session:</p>
             <div class="st-cmd"><code>/plugin marketplace add asyau/tab-state</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
             <div class="st-cmd"><code>/plugin install tab-state@tab-state</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
+            <p class="st-callout">Using the Claude app on Mac or Windows? Plugins don't work there — <button type="button" class="hs-linklike" data-go-pane="claude-desktop">use the Claude Desktop tab</button>. Claude Code must run on <b>this computer</b>: cloud sessions (claude.ai/code, or a cloud session in the app) run on a remote machine that can't see your tabs, and don't support <code>/plugin</code>.</p>
             <p class="muted">Claude Code starts the Tab State server itself whenever it needs it — nothing else to install or keep running. Needs Node.js 18+. Check it with <code>/mcp</code>: <b>tab-state</b> should show as connected.</p>
           </div>
 
           <div class="st-pane" role="tabpanel" id="pane-codex" aria-labelledby="tab-codex" hidden>
-            <p><span class="st-badge">Plugin · recommended</span> In a terminal:</p>
+            <p><span class="st-badge">Plugin</span> For OpenAI's Codex (CLI, IDE extension or app). In a terminal:</p>
             <div class="st-cmd"><code>codex plugin marketplace add asyau/tab-state</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
             <div class="st-cmd"><code>codex plugin add tab-state@tab-state</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
             <p class="muted">Works in the Codex CLI, IDE extension and app. Codex starts the server on its own; needs Node.js 18+. Check it with <code>codex mcp list</code>.</p>
           </div>
 
           <div class="st-pane" role="tabpanel" id="pane-claude-desktop" aria-labelledby="tab-claude-desktop" hidden>
-            <p><span class="st-badge">One-click installer</span> Build the installer once from your copy of the repo:</p>
-            <div class="st-cmd"><code>cd tab-state/mcp-server && npm install && npm run build:mcpb</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
-            <p>Then in Claude Desktop: <b>Settings → Extensions → Install Extension…</b> and pick <code>mcp-server/dist/tab-state-mcp-1.0.0.mcpb</code>. Node comes bundled with Claude Desktop.</p>
-            <p class="muted">Building needs <code>npm install -g @anthropic-ai/mcpb</code> once. Prefer editing config? Add this to <code>claude_desktop_config.json</code> instead (use your real path):</p>
-            <div class="st-cmd"><code>"tab-state": {{ "command": "node", "args": ["/path/to/tab-state/plugins/tab-state/server/tab-state-mcp.mjs"] }}</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
+            <p><span class="st-badge">One-click install</span> The Claude app for Mac or Windows:</p>
+            <ol class="st-substeps">
+              <li><a class="btn primary small st-download" href="https://github.com/asyau/tab-state/releases/download/claude-desktop/tab-state.mcpb" target="_blank" rel="noopener">Download Tab State for Claude Desktop</a> <span class="muted">(tab-state.mcpb)</span></li>
+              <li>Double-click the downloaded file — or in Claude Desktop open <b>Settings → Extensions</b> and drag it in — then click <b>Install</b>.</li>
+              <li>Tick <b>Share my tab history</b> in step 1. Claude starts Tab State itself; this page turns green.</li>
+            </ol>
+            <p class="muted">Nothing else to install — Claude Desktop includes everything it needs. The <code>/plugin</code> commands are for Claude Code (the terminal app) and don't work here.</p>
+            <details class="st-advanced">
+              <summary>Build it yourself instead</summary>
+              <p>From your copy of the repo (needs <code>npm install -g @anthropic-ai/mcpb</code> once):</p>
+              <div class="st-cmd"><code>cd tab-state/mcp-server && npm install && npm run build:mcpb</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
+              <p>Then install <code>mcp-server/dist/tab-state-mcp-1.0.0.mcpb</code> as above. Or add this to <code>claude_desktop_config.json</code> (use your real path):</p>
+              <div class="st-cmd"><code>"tab-state": {{ "command": "node", "args": ["/path/to/tab-state/plugins/tab-state/server/tab-state-mcp.mjs"] }}</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
+            </details>
           </div>
 
           <div class="st-pane" role="tabpanel" id="pane-chatgpt" aria-labelledby="tab-chatgpt" hidden>

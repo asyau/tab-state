@@ -154,8 +154,8 @@ live whether your assistant is connected. The same steps:
 
 | Assistant | How to connect |
 |---|---|
-| **Claude Desktop** | One click: build the installer (`cd mcp-server && npm install && npm run build:mcpb`), then **Settings → Extensions → Install Extension** and pick `mcp-server/dist/tab-state-mcp-1.0.0.mcpb`. |
-| **Claude Code** | Plugin: `/plugin marketplace add asyau/tab-state` then `/plugin install tab-state@tab-state` |
+| **Claude Desktop** | One click: **[download `tab-state.mcpb`](https://github.com/asyau/tab-state/releases/download/claude-desktop/tab-state.mcpb)**, double-click it (or **Settings → Extensions**, drag it in), click Install. |
+| **Claude Code** (terminal, on your computer) | Plugin: `/plugin marketplace add asyau/tab-state` then `/plugin install tab-state@tab-state`. Cloud sessions can't see your tabs and don't support `/plugin`. |
 | **Codex** (OpenAI's CLI / IDE / app) | Plugin: `codex plugin marketplace add asyau/tab-state` then `codex plugin add tab-state@tab-state` |
 | **ChatGPT** (web, developer mode) | ChatGPT only reaches MCP servers over HTTPS, so run the server in remote mode (`cd mcp-server && npm install && npm run remote`) and expose it with a tunnel. [Step-by-step and security notes →](mcp-server/README.md#chatgpt-remote-mode) |
 | Anything else that speaks MCP | `node mcp-server/server.mjs` over stdio — see [`mcp-server/README.md`](mcp-server/README.md) |

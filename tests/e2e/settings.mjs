@@ -25,14 +25,21 @@ const errs = []; page.on('pageerror', (e) => errs.push(e.message));
 await page.goto(`chrome-extension://${extId}/ui/settings.html`);
 await sleep(600);
 if (OUT) await page.screenshot({ path: path.join(OUT, 's1-wide.png'), fullPage: true });
-// tabs
+// tabs: Claude Desktop first and selected by default, with a one-click download
+assert.equal(await page.isVisible('#pane-claude-desktop'), true, 'Claude Desktop is the default tab');
+assert.equal(await page.getAttribute('#pane-claude-desktop .st-download', 'href'),
+  'https://github.com/asyau/tab-state/releases/download/claude-desktop/tab-state.mcpb');
 await page.click('#tab-codex');
-assert.equal(await page.isVisible('#pane-codex'), true); assert.equal(await page.isVisible('#pane-claude-code'), false);
-await page.keyboard.press('ArrowRight'); assert.equal(await page.isVisible('#pane-claude-desktop'), true);
-// copy
-await page.click('#pane-claude-desktop .st-copy >> nth=0');
+assert.equal(await page.isVisible('#pane-codex'), true); assert.equal(await page.isVisible('#pane-claude-desktop'), false);
+await page.keyboard.press('ArrowRight'); assert.equal(await page.isVisible('#pane-chatgpt'), true);
+await page.keyboard.press('Home'); assert.equal(await page.isVisible('#pane-claude-desktop'), true);
+// the Claude Code tab says its commands are for the terminal app, and links over to Claude Desktop
+await page.click('#tab-claude-code');
+await page.click('#pane-claude-code .st-copy >> nth=0');
 const clip = await page.evaluate(() => navigator.clipboard.readText());
-console.log('copied:', clip); assert.match(clip, /build:mcpb/);
+console.log('copied:', clip); assert.equal(clip, '/plugin marketplace add asyau/tab-state');
+await page.click('#pane-claude-code [data-go-pane="claude-desktop"]');
+assert.equal(await page.isVisible('#pane-claude-desktop'), true, 'callout switches to the Claude Desktop tab');
 // sync on: not connected -> pill warn; then start fake server -> connected
 await page.click('.st-advanced summary'); await page.fill('#mcp-port', '9955'); await page.locator('#mcp-port').dispatchEvent('change');
 await page.check('#mcp-enabled'); await sleep(500);

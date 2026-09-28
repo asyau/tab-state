@@ -53,6 +53,11 @@ codex plugin marketplace add asyau/tab-state
 codex plugin add tab-state@tab-state
 ```
 
+Run these in Claude Code **on the same computer as Chrome** (a terminal session). Cloud sessions
+(claude.ai/code, or a cloud session in the Claude app) run on a remote machine: they can't reach
+your tabs, and `/plugin` isn't available there ("Plugins aren't available in this environment").
+Using the Claude chat app instead? Use the [Claude Desktop installer](#one-click-install-for-claude-desktop-mcpb).
+
 Restart the session afterwards. `/mcp` in Claude Code (or `codex mcp list`) should show
 `tab-state` as connected.
 
@@ -103,8 +108,12 @@ Options: `TAB_STATE_MCP_REMOTE_PORT` (default 8766), `TAB_STATE_MCP_TOKEN` (use 
 
 ## One-click install for Claude Desktop (.mcpb)
 
-The easiest way to use this with Claude Desktop: a `.mcpb` bundle that installs with no `npm
-install` and no config-file editing (Node ships inside Claude Desktop).
+The easiest way to use this with Claude Desktop: **[download `tab-state.mcpb`](https://github.com/asyau/tab-state/releases/download/claude-desktop/tab-state.mcpb)**,
+double-click it (or Claude Desktop → Settings → Extensions → drag it in), and click Install — no
+npm, no config files (Node ships inside Claude Desktop). It's rebuilt automatically from `main`
+by `.github/workflows/claude-desktop.yml` whenever the server changes.
+
+To build it yourself instead:
 
 ```bash
 npm install -g @anthropic-ai/mcpb   # once
