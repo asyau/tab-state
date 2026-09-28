@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { checkRateLimit, callAnthropic } from '../src/worker.js';
+import worker, { checkRateLimit, callAnthropic, clampMaxTokens } from '../src/worker.js';
 
 const realFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = realFetch; });
@@ -118,4 +118,12 @@ test('POST /summarize enforces the same per-user cap end to end', async () => {
   }
   const res = await worker.fetch(req('/summarize', { body }), env);
   assert.equal(res.status, 429);
+});
+
+test('maxTokens: defaults to 300, honours a larger request (tab grouping), never above the ceiling', () => {
+  assert.equal(clampMaxTokens(undefined), 300);
+  assert.equal(clampMaxTokens('nonsense'), 300);
+  assert.equal(clampMaxTokens(-5), 300);
+  assert.equal(clampMaxTokens(1500), 1500);
+  assert.equal(clampMaxTokens(1_000_000), 1500, 'a client cannot run up the bill');
 });

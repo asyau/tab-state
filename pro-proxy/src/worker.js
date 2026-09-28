@@ -13,7 +13,16 @@
 const ALLOWED_ORIGIN_PREFIX = 'chrome-extension://';
 const RATE_LIMIT_PER_DAY = 200; // per userId; a generous daily cap to bound cost under abuse
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
-const ANTHROPIC_MAX_TOKENS = 300;
+const ANTHROPIC_MAX_TOKENS = 300; // default: one-line summaries
+// Tab grouping replies with a JSON list that needs more room. A client may ask for more, but never
+// above this — it's your Anthropic bill, and the rate limit counts requests, not tokens.
+const ANTHROPIC_MAX_TOKENS_CEILING = 1500;
+
+export function clampMaxTokens(requested) {
+  const n = Number(requested);
+  if (!Number.isFinite(n) || n <= 0) return ANTHROPIC_MAX_TOKENS;
+  return Math.min(Math.round(n), ANTHROPIC_MAX_TOKENS_CEILING);
+}
 
 function corsHeaders(origin) {
   const allowed = origin && origin.startsWith(ALLOWED_ORIGIN_PREFIX) ? origin : '';
@@ -50,7 +59,7 @@ export async function checkRateLimit(env, userId, now = Date.now()) {
 
 /** Calls Anthropic's Messages API with the Worker's own key. Same request/response shape the
  * extension's own direct Anthropic provider uses (see ai/providers.js) so behavior matches. */
-export async function callAnthropic(env, systemPrompt, userPrompt) {
+export async function callAnthropic(env, systemPrompt, userPrompt, maxTokens = ANTHROPIC_MAX_TOKENS) {
   if (!env.ANTHROPIC_API_KEY) throw new Error('Worker is not configured: missing ANTHROPIC_API_KEY secret');
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -61,7 +70,7 @@ export async function callAnthropic(env, systemPrompt, userPrompt) {
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: ANTHROPIC_MAX_TOKENS,
+      max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     }),
@@ -83,7 +92,7 @@ async function handleSummarize(request, env) {
   } catch {
     return json({ error: 'Malformed JSON body' }, 400, origin);
   }
-  const { systemPrompt, userPrompt, userId } = body || {};
+  const { systemPrompt, userPrompt, userId, maxTokens } = body || {};
   if (typeof systemPrompt !== 'string' || typeof userPrompt !== 'string' || !systemPrompt || !userPrompt) {
     return json({ error: 'systemPrompt and userPrompt are required strings' }, 400, origin);
   }
@@ -96,7 +105,7 @@ async function handleSummarize(request, env) {
     return json({ error: `Daily request limit (${RATE_LIMIT_PER_DAY}) reached for this account` }, 429, origin);
   }
   try {
-    const text = await callAnthropic(env, systemPrompt, userPrompt);
+    const text = await callAnthropic(env, systemPrompt, userPrompt, clampMaxTokens(maxTokens));
     return json({ text }, 200, origin);
   } catch (err) {
     return json({ error: String(err?.message || err) }, 502, origin);

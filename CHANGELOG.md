@@ -7,6 +7,14 @@
   exception: an explicitly Purged tab is still cleaned up after its undo window. Needs the new
   `unlimitedStorage` permission, since `chrome.storage.local`'s default 10MB cap could otherwise
   be hit by an active user over months of use.
+- **Fixed: "Group related tabs" failing with "The model's response could not be parsed into valid
+  groups."** Grouping's JSON reply went through the cleanup meant for one-line summaries (first
+  line only, 220 characters, quotes stripped), so any reply formatted over several lines — what
+  most models send — was destroyed before parsing. Grouping now reads the reply untouched,
+  understands fenced / wrapped / `indices` variants, keeps the complete groups from a reply cut
+  off mid-way, asks for enough output (1,500 tokens; the self-hosted Pro proxy now honours this,
+  capped), and sends at most the 60 most recently used tabs. Clearer message when a model really
+  does answer in the wrong format.
 - **Security: web pages can no longer write to the local MCP server.** Its sync endpoint used to
   accept a POST from any origin, so any site open in your browser could replace the tab list your
   assistant reads with text of its own (verified: a plain `fetch(…, {mode: 'no-cors'})` from a web

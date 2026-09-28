@@ -11,7 +11,7 @@
   },
   "scripts": {
     "test": "node --test tests/unit/*.test.js",
-    "test:e2e": "node tests/e2e/run.mjs && node tests/e2e/history.mjs && node tests/e2e/settings.mjs",
+    "test:e2e": "node tests/e2e/run.mjs && node tests/e2e/history.mjs && node tests/e2e/settings.mjs && node tests/e2e/grouping.mjs",
     "test:real": "node tests/e2e/real-sites.mjs",
     "test:smoke": "node tests/e2e/smoke.mjs",
     "screenshots": "node tests/e2e/screenshots.mjs",

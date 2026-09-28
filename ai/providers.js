@@ -118,7 +118,7 @@ async function readError(res) {
   return `HTTP ${res.status}: ${String(detail).slice(0, 200)}${hint}`;
 }
 
-async function openaiRun(systemPrompt, userPrompt, settings) {
+async function openaiRun(systemPrompt, userPrompt, settings, { maxTokens } = {}) {
   const cfg = settings.openai;
   if (!cfg.baseUrl) throw new Error('Set a base URL');
   if (!cfg.model) throw new Error('Set a model name');
@@ -134,6 +134,7 @@ async function openaiRun(systemPrompt, userPrompt, settings) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
+      ...(maxTokens ? { max_tokens: maxTokens } : {}),
     }),
   });
   if (!res.ok) throw new Error(await readError(res));
@@ -143,7 +144,7 @@ async function openaiRun(systemPrompt, userPrompt, settings) {
 
 // --- Anthropic ----------------------------------------------------------------
 
-async function anthropicRun(systemPrompt, userPrompt, settings) {
+async function anthropicRun(systemPrompt, userPrompt, settings, { maxTokens = 300 } = {}) {
   const cfg = settings.anthropic;
   if (!cfg.apiKey) throw new Error('Set an Anthropic API key');
   if (!cfg.model) throw new Error('Set a model name');
@@ -158,7 +159,7 @@ async function anthropicRun(systemPrompt, userPrompt, settings) {
     },
     body: JSON.stringify({
       model: cfg.model,
-      max_tokens: 300,
+      max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     }),
@@ -184,7 +185,7 @@ export async function openHostedCheckout(planNickname) {
   return extpay.openPaymentPage(planNickname);
 }
 
-async function hostedRun(systemPrompt, userPrompt, settings) {
+async function hostedRun(systemPrompt, userPrompt, settings, { maxTokens } = {}) {
   const cfg = settings.hosted;
   if (!cfg?.workerUrl) throw new Error('Set your pro-proxy Worker URL in Settings (see pro-proxy/README.md)');
   const user = await hostedUser().catch(() => null);
@@ -193,7 +194,7 @@ async function hostedRun(systemPrompt, userPrompt, settings) {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    body: JSON.stringify({ systemPrompt, userPrompt, userId: user.email || String(user.installedAt) }),
+    body: JSON.stringify({ systemPrompt, userPrompt, userId: user.email || String(user.installedAt), ...(maxTokens ? { maxTokens } : {}) }),
   });
   if (!res.ok) throw new Error(await readError(res));
   const data = await res.json();
@@ -219,13 +220,18 @@ export function providerChain(settings) {
   return [settings.provider, 'template'];
 }
 
-/** Try the configured provider chain with a given prompt pair. 'template' entries call `fallback`. */
-async function runChain(chain, systemPrompt, userPrompt, settings, fallback, maxLen = 220) {
+/**
+ * Try the configured provider chain with a given prompt pair. 'template' entries call `fallback`.
+ * Replies are cleaned for display as one line of prose (cleanOutput: first line, quotes stripped,
+ * `maxLen` chars) unless `raw` — structured output like grouping's JSON must come back untouched.
+ */
+async function runChain(chain, systemPrompt, userPrompt, settings, fallback, maxLen = 220, { raw = false, maxTokens } = {}) {
   const errors = [];
   for (const id of chain) {
     if (id === 'template') return { text: fallback(), source: 'template', errors };
     try {
-      const text = cleanOutput(await PROVIDERS[id].run(systemPrompt, userPrompt, settings), maxLen);
+      const reply = await PROVIDERS[id].run(systemPrompt, userPrompt, settings, { maxTokens });
+      const text = raw ? (typeof reply === 'string' ? reply.trim() : '') : cleanOutput(reply, maxLen);
       if (text) return { text, source: id, errors };
       errors.push(`${id}: empty response`);
     } catch (err) {
@@ -280,22 +286,48 @@ export function sendsDataOffDevice(settings) {
 
 // --- AI-assisted tab grouping (settings.grouping.enabled, off by default) -------------------
 
-/** Tolerant JSON extraction: strips a ```json fence or leading/trailing prose if a model adds one. */
+/** Most tabs sent to the model for grouping (most recently used first): bounds the prompt, the
+ *  reply's length, and the model's attention — 60 tabs is plenty to find a handful of groups. */
+export const MAX_GROUPING_TABS = 60;
+/** Output budget for the grouping reply: 5 groups of up to ~60 indexes as JSON fits well inside. */
+const GROUPING_MAX_TOKENS = 1500;
+
+function normalizeGroups(value) {
+  const list = Array.isArray(value) ? value : Array.isArray(value?.groups) ? value.groups : null;
+  if (!list) return [];
+  return list
+    .map((g) => (g && typeof g === 'object' ? { name: g.name ?? g.title, indexes: g.indexes ?? g.indices ?? g.tabs } : null))
+    .filter((g) => g && typeof g.name === 'string' && Array.isArray(g.indexes));
+}
+
+/**
+ * Tolerant JSON extraction. Models format this reply however they like: over many lines, inside a
+ * ```json fence with prose around it, wrapped as {"groups": [...]}, or cut off mid-way when they hit
+ * their output limit. Take whatever complete groups are there.
+ */
 export function parseGroupsJson(text) {
   if (typeof text !== 'string') return [];
   let s = text.trim();
-  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
   if (fence) s = fence[1].trim();
-  const start = s.indexOf('[');
-  const end = s.lastIndexOf(']');
-  if (start === -1 || end === -1 || end < start) return [];
-  try {
-    const parsed = JSON.parse(s.slice(start, end + 1));
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((g) => g && typeof g.name === 'string' && Array.isArray(g.indexes));
-  } catch {
-    return [];
+  const start = s.search(/[[{]/);
+  if (start === -1) return [];
+  s = s.slice(start);
+  // 1) The whole thing, or up to the last closing bracket (drops trailing prose).
+  for (const candidate of [s, s.slice(0, Math.max(s.lastIndexOf(']'), s.lastIndexOf('}')) + 1)]) {
+    try {
+      const groups = normalizeGroups(JSON.parse(candidate));
+      if (groups.length) return groups;
+    } catch { /* try the next strategy */ }
   }
+  // 2) Truncated or otherwise broken: salvage each complete {"name": ..., "indexes": [...]} object.
+  const salvaged = [];
+  for (const m of s.matchAll(/\{[^{}]*\}/g)) {
+    try {
+      salvaged.push(...normalizeGroups([JSON.parse(m[0])]));
+    } catch { /* incomplete object */ }
+  }
+  return salvaged;
 }
 
 /**
@@ -308,8 +340,12 @@ export async function proposeGroups(records, settings) {
   if (!chain.length) {
     return { groups: [], errors: ['No AI provider configured — enable on-device AI or add an API key in Settings to use grouping.'] };
   }
-  const { prompt, indexToId } = buildGroupingPrompt(records);
-  const { text, errors, source } = await runChain(chain, GROUPING_SYSTEM_PROMPT, prompt, settings, () => '');
+  const recent = [...records]
+    .sort((a, b) => (b.lastActiveAt || b.createdAt || 0) - (a.lastActiveAt || a.createdAt || 0))
+    .slice(0, MAX_GROUPING_TABS);
+  const { prompt, indexToId } = buildGroupingPrompt(recent);
+  const { text, errors, source } = await runChain(chain, GROUPING_SYSTEM_PROMPT, prompt, settings, () => '', 0,
+    { raw: true, maxTokens: GROUPING_MAX_TOKENS });
   if (!text) return { groups: [], errors: errors.length ? errors : ['No response from the AI provider.'] };
 
   const raw = parseGroupsJson(text);
@@ -323,5 +359,14 @@ export async function proposeGroups(records, settings) {
     for (const id of ids) seen.add(id);
     groups.push({ name: String(g.name).slice(0, 60) || 'Group', tabIds: ids });
   }
-  return { groups, source, errors: groups.length ? [] : ['The model\'s response could not be parsed into valid groups.'] };
+  if (groups.length) return { groups, source, errors: [] };
+  // Parsed fine but nothing groupable is a legitimate answer; unparseable is a model problem.
+  return {
+    groups: [],
+    source,
+    errors: [raw.length || /^\s*(```(json)?\s*)?\[\s*\]/.test(text)
+      ? 'No clearly related tabs found to group right now.'
+      : `The AI (${PROVIDERS[source]?.label.split(' (')[0] ?? source}) replied in an unexpected format, so no groups were made. Try again, or choose a larger model in Settings.`],
+  };
 }
+

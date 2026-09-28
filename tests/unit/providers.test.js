@@ -225,7 +225,66 @@ test('proposeGroups reports a clean error when the model output cannot be parsed
   mockFetch(() => json(200, { choices: [{ message: { content: 'I cannot help with that.' } }] }));
   const out = await proposeGroups(groupable, settings);
   assert.deepEqual(out.groups, []);
-  assert.match(out.errors[0], /could not be parsed/);
+  assert.match(out.errors[0], /replied in an unexpected format/);
+});
+
+// Regression: grouping used to go through the one-line-summary cleanup (first line only, 220 chars,
+// quotes stripped), so any realistically formatted reply was destroyed before parsing and the user
+// saw "The model's response could not be parsed into valid groups."
+const PRETTY = `[
+  {
+    "name": "Stripe Docs",
+    "indexes": [1, 2]
+  },
+  {
+    "name": "Cooking",
+    "indexes": [3, 4]
+  }
+]`;
+const four = [...groupable, { id: 'r4', title: 'Soup', url: 'https://food.com/soup' }];
+const wantTwo = [{ name: 'Stripe Docs', tabIds: ['r1', 'r2'] }, { name: 'Cooking', tabIds: ['r3', 'r4'] }];
+
+for (const [label, content] of [
+  ['multi-line (pretty-printed) JSON', PRETTY],
+  ['a ```json fenced block with prose around it', `Here are the groups:\n\`\`\`json\n${PRETTY}\n\`\`\`\nHope that helps!`],
+  ['an object wrapper {"groups": [...]}', `{"groups": ${PRETTY}}`],
+  ['"indices" instead of "indexes"', PRETTY.replaceAll('indexes', 'indices')],
+]) {
+  test(`proposeGroups understands ${label}`, async () => {
+    const settings = mergeSettings({ provider: 'openai', openai: { apiKey: 'k', model: 'm' } });
+    mockFetch(() => json(200, { choices: [{ message: { content } }] }));
+    const out = await proposeGroups(four, settings);
+    assert.deepEqual(out.errors, []);
+    assert.deepEqual(out.groups, wantTwo);
+  });
+}
+
+test('proposeGroups keeps the complete groups from a reply cut off mid-way (output token limit)', async () => {
+  const settings = mergeSettings({ provider: 'openai', openai: { apiKey: 'k', model: 'm' } });
+  const cut = PRETTY.slice(0, PRETTY.indexOf('"Cooking"') + 20); // second group truncated
+  mockFetch(() => json(200, { choices: [{ message: { content: cut } }] }));
+  const out = await proposeGroups(four, settings);
+  assert.deepEqual(out.groups, [wantTwo[0]]);
+});
+
+test('proposeGroups asks Anthropic for enough output tokens for a long group list', async () => {
+  const settings = mergeSettings({ provider: 'anthropic', anthropic: { apiKey: 'k', model: 'm' } });
+  let body;
+  mockFetch((url, init) => { body = JSON.parse(init.body); return json(200, { content: [{ type: 'text', text: PRETTY }] }); });
+  const out = await proposeGroups(four, settings);
+  assert.equal(out.groups.length, 2);
+  assert.ok(body.max_tokens >= 1000, `max_tokens ${body.max_tokens}`);
+});
+
+test('proposeGroups only sends a bounded number of tabs (most recently used first)', async () => {
+  const settings = mergeSettings({ provider: 'openai', openai: { apiKey: 'k', model: 'm' } });
+  const many = Array.from({ length: 150 }, (_, i) => ({ id: `m${i}`, title: `Tab ${i}`, url: `https://s${i}.com/`, lastActiveAt: i }));
+  let prompt;
+  mockFetch((url, init) => { prompt = JSON.parse(init.body).messages[1].content; return json(200, { choices: [{ message: { content: '[]' } }] }); });
+  await proposeGroups(many, settings);
+  const lines = prompt.split('\n').filter((l) => /^\d+\. /.test(l));
+  assert.ok(lines.length <= 80, `sent ${lines.length} tabs`);
+  assert.match(lines[0], /Tab 149/, 'most recently used first');
 });
 
 // --- Hosted Pro tier (see ai/providers.js hostedRun / lib/extpay.js) --------------------------
