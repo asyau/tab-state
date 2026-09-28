@@ -94,8 +94,8 @@ tabs, the tab you're on, and anything with a note are never touched.
 <td valign="top">
 
 **🗂️ Full history, kept forever**<br>
-Every tab you've ever tracked, grouped by day. (Only an explicit Purge forgets a tab — an hour
-later, after the undo window.)
+Every tab you've ever tracked, by day — repeat visits folded per site, a bar of where each day's
+reading time went, search and filters, and a details panel that follows your cursor or ↑/↓.
 
 </td>
 </tr>

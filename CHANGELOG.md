@@ -7,6 +7,14 @@
   exception: an explicitly Purged tab is still cleaned up after its undo window. Needs the new
   `unlimitedStorage` permission, since `chrome.storage.local`'s default 10MB cap could otherwise
   be hit by an active user over months of use.
+- **History page, redesigned to use the whole window.** Two panes: the list on the left, a
+  details panel on the right that follows the hovered or ↑/↓-selected tab (click pins it; Enter
+  or double-click jumps to / reopens the tab) and lists your other visits to the same site.
+  Repeat visits fold into one row per site ("chatgpt.com · 8 tabs · 54s"), sorted by reading
+  time. Each day opens with a "where your reading time went" bar (top 4 sites + other, labelled,
+  click a site to filter to it). Toolbar: search (titles, sites, URLs, notes), bucket filters,
+  and "Hide quick visits (<10s)" — on by default, never hides a noted tab. Narrow windows get
+  one column with the details as a bottom sheet.
 - **Compact dashboard cards.** Every tab is a single 30px row (favicon, title, and one number:
   reading time, scroll depth, or "unread"), so a column shows roughly 3–4x more tabs than before
   without scrolling. Hovering a row (after a short intent delay, so sweeping the pointer across

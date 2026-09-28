@@ -7,7 +7,7 @@
   <link rel="icon" href="../icons/icon32.png">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="history-page">
   <header class="topbar">
     <div class="brand">
       <img src="../icons/icon48.png" alt="" width="28" height="28">
@@ -22,68 +22,76 @@
     </div>
   </header>
 
-  <main id="days" class="history-days"></main>
-  <p id="empty" class="empty" hidden>Nothing tracked yet — browse a bit, then check back here.</p>
+  <div class="hs-toolbar" role="search">
+    <label class="hs-search">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="hs-query" type="search" placeholder="Search titles, sites, notes…" aria-label="Search history" autocomplete="off">
+    </label>
+    <div class="hs-chips" role="group" aria-label="Filter by how you used the tab">
+      <button class="hs-chip" type="button" data-bucket="deep" aria-pressed="false">🎯 Deep Focus</button>
+      <button class="hs-chip" type="button" data-bucket="partial" aria-pressed="false">📖 Partially Read</button>
+      <button class="hs-chip" type="button" data-bucket="glanced" aria-pressed="false">👁️ Glanced</button>
+      <button class="hs-chip" type="button" data-bucket="ghost" aria-pressed="false">👻 Ghost</button>
+    </div>
+    <label class="hs-switch">
+      <input id="hs-hide-quick" type="checkbox" checked>
+      <span class="hs-switch-track" aria-hidden="true"></span>
+      Hide quick visits <span class="muted">(&lt;10s)</span>
+    </label>
+    <p id="hs-showing" class="hs-showing muted" aria-live="polite"></p>
+  </div>
 
-  <template id="card-tpl">
-    <article class="card">
-      <div class="card-body">
-        <div class="card-head">
-          <img class="favicon" alt="" width="16" height="16">
-          <button class="title" type="button"></button>
-          <span class="row-stat"></span>
-          <svg class="icon row-pin" viewBox="0 0 24 24" aria-label="Has a follow-up note" role="img" hidden><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
-        </div>
-        <div class="card-more">
-          <div class="meta muted"></div>
-          <div class="badges"></div>
-          <p class="summary"><span class="summary-text"></span> <span class="source"></span></p>
-          <p class="note-display" hidden></p>
-          <div class="card-actions">
-            <button class="act primary jump" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg><span class="lbl">Jump to tab</span></button>
+  <main class="hs-layout">
+    <div id="days" class="hs-list"></div>
+
+    <aside id="hs-panel" class="hs-panel" aria-label="Tab details">
+      <div id="hs-panel-empty" class="hs-panel-empty">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V6a3 3 0 0 1 6 0v5"/><rect x="5" y="11" width="14" height="10" rx="2"/></svg>
+        <p><b>Hover a tab</b> (or use <kbd>↑</kbd> <kbd>↓</kbd>) to see where you left off.</p>
+        <p class="muted">Enter jumps to it — or reopens it if it's closed.</p>
+      </div>
+      <div id="hs-panel-body" hidden>
+        <button id="hs-panel-close" class="modal-close hs-panel-close" type="button" aria-label="Close details">✕</button>
+        <div class="detail-preview">
+          <img id="detail-favicon" class="detail-favicon" alt="">
+          <div class="detail-heading">
+            <h2 id="detail-title"></h2>
+            <p id="detail-meta" class="muted"></p>
+            <p id="detail-url" class="detail-url muted"></p>
           </div>
         </div>
+        <div id="detail-badges" class="badges"></div>
+        <div class="hs-panel-actions">
+          <button id="detail-jump" class="btn primary small" type="button">Jump to tab</button>
+        </div>
+
+        <section class="detail-section">
+          <h3>Summary</h3>
+          <p id="detail-insight" class="detail-insight"></p>
+        </section>
+        <section id="detail-anchor-section" class="detail-section" hidden>
+          <h3>Where you stopped</h3>
+          <p id="detail-anchor"></p>
+        </section>
+        <section id="detail-selection-section" class="detail-section" hidden>
+          <h3>Last selected text</h3>
+          <p id="detail-selection"></p>
+        </section>
+        <section id="detail-note-section" class="detail-section" hidden>
+          <h3>📌 Your note</h3>
+          <p id="detail-note"></p>
+        </section>
+
+        <section id="detail-more-section" class="detail-section" hidden>
+          <h3 id="detail-more-title"></h3>
+          <div id="detail-more" class="hs-more"></div>
+        </section>
+
       </div>
-    </article>
-  </template>
-
-  <div id="detail-backdrop" class="modal-backdrop" hidden></div>
-  <div id="detail-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="detail-title">
-    <button id="detail-close" class="modal-close" type="button" aria-label="Close">✕</button>
-    <div class="detail-preview">
-      <img id="detail-favicon" class="detail-favicon" alt="">
-      <div class="detail-heading">
-        <h2 id="detail-title"></h2>
-        <p id="detail-meta" class="muted"></p>
-        <p id="detail-url" class="detail-url muted"></p>
-      </div>
-    </div>
-    <div id="detail-badges" class="badges"></div>
-
-    <section class="detail-section">
-      <h3>Summary</h3>
-      <p id="detail-insight" class="detail-insight"></p>
-    </section>
-
-    <section id="detail-anchor-section" class="detail-section" hidden>
-      <h3>Where you stopped</h3>
-      <p id="detail-anchor"></p>
-    </section>
-
-    <section id="detail-selection-section" class="detail-section" hidden>
-      <h3>Last selected text</h3>
-      <p id="detail-selection"></p>
-    </section>
-
-    <section id="detail-note-section" class="detail-section" hidden>
-      <h3>📌 Your note</h3>
-      <p id="detail-note"></p>
-    </section>
-
-    <div class="card-actions">
-      <button id="detail-jump" class="btn primary small" type="button">Jump to tab</button>
-    </div>
-  </div>
+    </aside>
+  </main>
+  <p id="empty" class="empty" hidden>Nothing tracked yet — browse a bit, then check back here.</p>
+  <p id="no-match" class="empty" hidden>No tabs match these filters.</p>
 
   <script type="module" src="history.js"></script>
 </body>
