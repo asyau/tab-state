@@ -28,6 +28,8 @@ const state = {
   recapFingerprint: '',
   recapBusy: false,
   pendingGroups: [],
+  tabGroups: new Map(),
+  expandedGroups: new Set(), // tab groups showing all their tabs, not just the first few
   renderDeferred: false,
 };
 
@@ -40,6 +42,20 @@ async function loadData() {
     .map(([, rec]) => rec);
   state.watchlist = Array.isArray(stored.watchlist) ? stored.watchlist : [];
   state.tabs = new Map(tabs.map((t) => [t.id, t]));
+  const groups = await chrome.tabGroups.query({}).catch(() => []);
+  state.tabGroups = new Map(groups.map((g) => [g.id, g]));
+}
+
+// Chrome's tab-group colors (chrome.tabGroups.Color), close to how the tab strip draws them.
+const GROUP_COLORS = {
+  grey: '#5f6368', blue: '#1a73e8', red: '#d93025', yellow: '#e8a200', green: '#188038',
+  pink: '#d01884', purple: '#a142f4', cyan: '#007b83', orange: '#fa7b17',
+};
+const groupColor = (g) => GROUP_COLORS[g?.color] || GROUP_COLORS.grey;
+const groupName = (g) => g?.title?.trim() || 'Unnamed group';
+function groupOfRecord(rec) {
+  const tab = rec.tabId != null ? state.tabs.get(rec.tabId) : null;
+  return tab && tab.groupId != null && tab.groupId >= 0 ? state.tabGroups?.get(tab.groupId) ?? null : null;
 }
 
 function isOpen(rec) {
@@ -157,6 +173,18 @@ function buildCard(rec, now, { closed = false } = {}) {
   }
   node.querySelector('.row-pin').hidden = !rec.note;
 
+  // Which Chrome tab group it's in, as a small dot in that group's color.
+  const group = closed ? null : groupOfRecord(rec);
+  if (group) {
+    const dot = document.createElement('span');
+    dot.className = 'gdot';
+    dot.style.setProperty('--g', groupColor(group));
+    dot.title = `In tab group "${groupName(group)}"`;
+    dot.setAttribute('role', 'img');
+    dot.setAttribute('aria-label', dot.title);
+    stat.before(dot);
+  }
+
   const summary = summaryFor(rec, now);
   node.querySelector('.summary-text').textContent = summary.text;
   const source = node.querySelector('.source');
@@ -216,6 +244,115 @@ function buildCard(rec, now, { closed = false } = {}) {
     });
   }
   return node;
+}
+
+// --- Chrome tab groups (made by "Group related tabs", or by hand in Chrome) ------------------
+
+const GROUP_PREVIEW = 5;
+
+async function focusTab(tab) {
+  try {
+    await chrome.tabs.update(tab.id, { active: true });
+    await chrome.windows.update(tab.windowId, { focused: true });
+  } catch (err) {
+    showError(err);
+  }
+}
+
+function renderTabGroups(now) {
+  const byGroup = new Map();
+  for (const tab of state.tabs.values()) {
+    if (tab.groupId == null || tab.groupId < 0 || !state.tabGroups?.has(tab.groupId)) continue;
+    if (!byGroup.has(tab.groupId)) byGroup.set(tab.groupId, []);
+    byGroup.get(tab.groupId).push(tab);
+  }
+  const section = $('#tab-groups');
+  section.hidden = byGroup.size === 0;
+  $('#tab-groups-count').textContent = String(byGroup.size);
+  const recByTab = new Map(state.records.filter(isOpen).map((r) => [r.tabId, r]));
+
+  $('#tab-groups-list').replaceChildren(...[...byGroup.entries()].map(([groupId, tabs]) => {
+    const group = state.tabGroups.get(groupId);
+    tabs.sort((a, b) => a.windowId - b.windowId || a.index - b.index);
+    const readMs = tabs.reduce((sum, t) => sum + (recByTab.has(t.id) ? effectiveActiveMs(recByTab.get(t.id), now) : 0), 0);
+    const expanded = state.expandedGroups.has(groupId);
+
+    const card = document.createElement('article');
+    card.className = 'tgroup';
+    card.dataset.groupId = String(groupId);
+    card.style.setProperty('--g', groupColor(group));
+
+    const head = document.createElement('header');
+    head.className = 'tgroup-head';
+    const title = document.createElement('h3');
+    title.textContent = groupName(group);
+    const meta = document.createElement('span');
+    meta.className = 'muted';
+    meta.textContent = `${tabs.length} tab${tabs.length === 1 ? '' : 's'}${readMs >= 1000 ? ` · ${formatDuration(readMs)} read` : ''}`;
+    head.append(title, meta);
+
+    const list = document.createElement('ul');
+    list.className = 'tgroup-tabs';
+    const shown = expanded ? tabs : tabs.slice(0, GROUP_PREVIEW);
+    list.append(...shown.map((tab) => {
+      const rec = recByTab.get(tab.id);
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tgroup-tab';
+      btn.title = `Go to: ${tab.url || ''}`;
+      const icon = document.createElement('img');
+      icon.className = 'favicon';
+      icon.alt = '';
+      icon.width = 16;
+      icon.height = 16;
+      icon.src = faviconUrl(tab.url || tab.pendingUrl || '');
+      const name = document.createElement('span');
+      name.className = 'tgroup-tab-title';
+      name.textContent = rec?.title || tab.title || tab.url;
+      const stat = document.createElement('span');
+      stat.className = 'row-stat';
+      if (rec) { // same wording as the board row for this tab
+        stat.textContent = classify(rec, now, thresholds()) === 'ghost' ? 'unread' : formatDuration(effectiveActiveMs(rec, now));
+      }
+      btn.append(icon, name, stat);
+      btn.addEventListener('click', () => focusTab(tab));
+      li.append(btn);
+      return li;
+    }));
+
+    const actions = document.createElement('div');
+    actions.className = 'tgroup-actions';
+    if (tabs.length > GROUP_PREVIEW) {
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'act';
+      more.textContent = expanded ? 'Show fewer' : `Show all ${tabs.length}`;
+      more.setAttribute('aria-expanded', String(expanded));
+      more.addEventListener('click', () => {
+        if (expanded) state.expandedGroups.delete(groupId); else state.expandedGroups.add(groupId);
+        renderTabGroups(Date.now());
+      });
+      actions.append(more);
+    }
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.className = 'act primary';
+    go.textContent = 'Go to group';
+    go.addEventListener('click', () => focusTab(tabs[0]));
+    const ungroup = document.createElement('button');
+    ungroup.type = 'button';
+    ungroup.className = 'act';
+    ungroup.textContent = 'Ungroup';
+    ungroup.title = 'Remove the group — the tabs stay open';
+    ungroup.addEventListener('click', async () => {
+      try { await chrome.tabs.ungroup(tabs.map((t) => t.id)); } catch (err) { showError(err); }
+    });
+    actions.append(go, ungroup);
+
+    card.append(head, list, actions);
+    return card;
+  }));
 }
 
 function sortKey(rec) {
@@ -281,6 +418,7 @@ function renderNow() {
   $('#followup-list').replaceChildren(...noted.map((rec) => buildCard(rec, now, { closed: rec.closed })));
 
   renderChecklist(now);
+  renderTabGroups(now);
 
   // Never purge a noted ("don't lose this"), pinned, or currently-active tab.
   state.purgeIds = open
@@ -587,7 +725,11 @@ $('#group-go').addEventListener('click', async () => {
       showError(err);
     }
   }
-  if (applied) showToast(`Grouped into ${applied} group${applied === 1 ? '' : 's'}.`);
+  if (applied) {
+    await refresh();
+    showToast(`Grouped into ${applied} group${applied === 1 ? '' : 's'} — they're under "Tab groups" here, and in Chrome's tab bar.`);
+    $('#tab-groups').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  }
 });
 
 // --- AI summaries (one at a time, only for tabs that matter) --------------------------------
@@ -673,7 +815,13 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 chrome.tabs.onRemoved.addListener(scheduleRefresh);
 chrome.tabs.onCreated.addListener(scheduleRefresh);
-chrome.tabs.onUpdated.addListener((id, info) => { if (info.pinned !== undefined) scheduleRefresh(); });
+chrome.tabs.onUpdated.addListener((id, info) => {
+  if (info.pinned !== undefined || info.groupId !== undefined) scheduleRefresh();
+});
+// Groups made, renamed, recolored or removed — here or by hand in Chrome's tab bar.
+chrome.tabGroups.onCreated.addListener(scheduleRefresh);
+chrome.tabGroups.onUpdated.addListener(scheduleRefresh);
+chrome.tabGroups.onRemoved.addListener(scheduleRefresh);
 setInterval(render, 30_000); // keep "5m ago" labels fresh
 initCardPeek();
 document.addEventListener('visibilitychange', () => {

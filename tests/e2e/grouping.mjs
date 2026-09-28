@@ -23,6 +23,11 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: { message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead." } }));
         return;
       }
+      if (!/group browser tabs/i.test(reqBody.messages[0].content)) { // summaries, recap: one plain sentence
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: { content: 'You browsed Stripe docs and some recipes.' } }] }));
+        return;
+      }
       lastPrompt = reqBody.messages[1].content;
       const idx = (t) => Number(lastPrompt.split('\n').find((l) => l.includes(t)).split('.')[0]);
       const content = `Sure! Here are the groups:\n\`\`\`json\n[\n  {\n    "name": "Stripe docs",\n    "indexes": [${idx('Authentication')}, ${idx('Webhooks')}]\n  },\n  {\n    "name": "Cooking",\n    "indexes": [${idx('Pasta')}, ${idx('Soup')}]\n  }\n]\n\`\`\`\nLet me know if you want changes.`;
@@ -56,5 +61,28 @@ console.log('chrome tab groups:', JSON.stringify(groups));
 assert.equal(groups.length, 2);
 assert.deepEqual(groups.map((g) => g.title).sort(), ['Cooking', 'Stripe docs']);
 console.log('toast:', await dash.textContent('#toast-text'));
+// The dashboard shows the groups it made (they used to exist only in Chrome's tab bar, so the page
+// looked unchanged after "Grouped into N groups").
+await dash.waitForSelector('#tab-groups:not([hidden])', { timeout: 5000 });
+const cards = await dash.$$eval('.tgroup', (els) => els.map((e) => ({
+  name: e.querySelector('h3').textContent,
+  tabs: [...e.querySelectorAll('.tgroup-tab-title')].map((t) => t.textContent),
+})));
+console.log('dashboard tab groups:', JSON.stringify(cards));
+assert.deepEqual(cards.map((c) => c.name).sort(), ['Cooking', 'Stripe docs']);
+assert.deepEqual(cards.find((c) => c.name === 'Cooking').tabs.sort(), ['Pasta recipes', 'Soup recipes']);
+assert.ok(await dash.$$eval('#board .gdot', (els) => els.length) >= 4, 'grouped tabs carry a group dot on the board');
+if (process.env.OUT) await dash.screenshot({ path: path.join(process.env.OUT, 'groups.png'), fullPage: true });
+
+// "Go to group" switches to the group's first tab; "Ungroup" removes it, here and in Chrome.
+await dash.click('.tgroup:has(h3:text("Stripe docs")) .act.primary');
+await sleep(500);
+const active = await sw.evaluate(async () => (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0]?.title);
+assert.match(active, /Stripe API/, 'Go to group focuses a tab in that group');
+await dash.bringToFront();
+await dash.click('.tgroup:has(h3:text("Cooking")) .act:has-text("Ungroup")');
+await sleep(1500);
+assert.deepEqual(await dash.$$eval('.tgroup h3', (els) => els.map((e) => e.textContent)), ['Stripe docs']);
+assert.equal((await sw.evaluate(async () => (await chrome.tabGroups.query({})).length)), 1);
 console.log('GROUPING E2E PASSED');
 await context.close(); server.close();

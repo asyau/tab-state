@@ -415,6 +415,70 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
   .card:focus-within .card-body, .card:focus-within .card-more { transition: none; }
 }
 
+/* --- Chrome tab groups -------------------------------------------------- */
+
+.tgroups { padding: 16px 24px 0; }
+.tgroups h2 { display: flex; align-items: center; gap: 6px; font-size: 14.5px; }
+.tgroups h2 .count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.tgroups .col-hint { margin: 2px 0 10px; }
+.tgroups-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; align-items: start; }
+.tgroup {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--g);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.tgroup-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.tgroup-head h3 { min-width: 0; overflow: hidden; font-size: 14px; white-space: nowrap; text-overflow: ellipsis; }
+.tgroup-head h3::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--g);
+  vertical-align: 1px;
+}
+.tgroup-head .muted { flex: none; font-size: 12px; }
+.tgroup-tabs { display: flex; flex-direction: column; gap: 1px; margin: 0; padding: 0; list-style: none; }
+.tgroup-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.tgroup-tab:hover { background: var(--surface-2); }
+.tgroup-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tgroup-tab .favicon { margin: 0; }
+.tgroup-tab-title { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tgroup-actions { display: flex; flex-wrap: wrap; gap: 2px; margin: 6px -6px 0; padding-top: 4px; border-top: 1px solid var(--border); }
+
+/* A tab's Chrome group, on its board row. */
+.gdot { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--g); }
+
+@media (max-width: 640px) { .tgroups { padding-left: 16px; padding-right: 16px; } }
+
 /* --- Closed list -------------------------------------------------------- */
 
 .closed { padding: 0 24px 32px; }

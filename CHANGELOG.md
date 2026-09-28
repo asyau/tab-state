@@ -7,6 +7,11 @@
   exception: an explicitly Purged tab is still cleaned up after its undo window. Needs the new
   `unlimitedStorage` permission, since `chrome.storage.local`'s default 10MB cap could otherwise
   be hit by an active user over months of use.
+- **Tab groups on the dashboard.** "Group related tabs" made real Chrome tab groups, but only
+  Chrome's tab bar showed them — the dashboard looked unchanged apart from a toast. A "Tab groups"
+  section now lists every Chrome group (made here or by hand): its color and name, its tabs with
+  reading time, and Go to group / Ungroup. Board rows get a dot in their group's color, and the
+  page scrolls to the section after grouping. Stays in sync when groups change in Chrome.
 - **Fixed: "Group related tabs" failing with "The model's response could not be parsed into valid
   groups."** Grouping's JSON reply went through the cleanup meant for one-line summaries (first
   line only, 220 characters, quotes stripped), so any reply formatted over several lines — what
