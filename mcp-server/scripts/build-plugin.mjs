@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const MCP_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const OUT = path.resolve(MCP_DIR, '../plugins/tab-state/server/tab-state-mcp.mjs');
-export const SOURCES = ['server.mjs', 'store.mjs', 'package-lock.json'];
+export const SOURCES = ['plugin-entry.mjs', 'server.mjs', 'store.mjs', 'package-lock.json'];
 
 export function sourceHash() {
   const h = createHash('sha256');
@@ -27,7 +27,7 @@ export function sourceHash() {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   mkdirSync(path.dirname(OUT), { recursive: true });
   await build({
-    entryPoints: [path.join(MCP_DIR, 'server.mjs')],
+    entryPoints: [path.join(MCP_DIR, 'plugin-entry.mjs')],
     outfile: OUT,
     bundle: true,
     platform: 'node',

@@ -198,6 +198,25 @@ to leave it running.
 Every tool reads from the last snapshot the extension synced — it's a point-in-time picture of your
 open (and recently closed) tabs, not a live feed.
 
+## Troubleshooting: "tab-state failed to connect"
+
+1. **Is Node.js installed, and can your assistant find it?** In a terminal: `node --version` — it
+   must print v18 or newer. Claude Code's own installer doesn't need Node, so many machines don't
+   have it: install it from [nodejs.org](https://nodejs.org) (or `brew install node` on a Mac),
+   then fully quit and reopen the terminal and Claude Code. If you use nvm/fnm/asdf, Node may not
+   be on the PATH that apps see — installing it system-wide fixes that.
+2. **Run the server by hand to see its error:**
+   ```bash
+   node ~/.claude/plugins/cache/tab-state/tab-state/*/server/tab-state-mcp.mjs
+   ```
+   (Codex: `~/.codex/plugins/cache/tab-state/tab-state/*/server/tab-state-mcp.mjs`.) Working, it
+   prints `sync endpoint listening…` and `MCP server connected over stdio` and waits — press Ctrl+C.
+   Anything else is the real error.
+3. **Retry in Claude Code** with `/mcp` → tab-state → Reconnect (or restart Claude Code). After a
+   failure it may wait a while before trying again on its own.
+4. **It connects but knows no tabs:** turn on "Share my tab history with AI assistants on this
+   computer" in the extension's Settings — the status there turns green once your assistant is running.
+
 ## Who can talk to it
 
 The sync endpoint listens on `127.0.0.1` only, so other machines can't reach it. Web pages open in

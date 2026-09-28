@@ -7,6 +7,10 @@
   exception: an explicitly Purged tab is still cleaned up after its undo window. Needs the new
   `unlimitedStorage` permission, since `chrome.storage.local`'s default 10MB cap could otherwise
   be hit by an active user over months of use.
+- MCP server: no longer exits when its sync port is taken by another app (it showed up in Claude
+  Code only as "failed to connect") — it keeps answering from the last synced data and retries the
+  port. The plugin's bundled server starts unconditionally instead of via a main-module path check
+  that can misfire on some systems. New "Troubleshooting" section in `mcp-server/README.md`.
 - **Claude Desktop: one-click download.** A GitHub Action builds the `.mcpb` on every server change
   and publishes it at a fixed link; Settings' assistant guide now opens on Claude Desktop with a
   Download button. The Claude Code tab says its `/plugin` commands are for Claude Code in a terminal

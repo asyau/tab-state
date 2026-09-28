@@ -271,7 +271,13 @@ function listen(server, port) {
 
 // --- Entry point ---------------------------------------------------------------------------
 
-async function main() {
+let started = false;
+
+/** Start the server. Idempotent: the plugin bundle's entry calls it directly (see plugin-entry.mjs),
+ *  and the "am I the main module" check below may call it too. */
+export async function main() {
+  if (started) return;
+  started = true;
   const remote = process.argv.includes('--remote') || process.env.TAB_STATE_MCP_REMOTE === '1';
 
   const syncServer = createSyncServer();
@@ -280,23 +286,25 @@ async function main() {
     await listen(syncServer, PORT);
     console.error(`tab-state-mcp: sync endpoint listening on http://${HOST}:${PORT} (data: ${DEFAULT_DATA_DIR})`);
   } catch (err) {
+    // Never exit over the sync port: answering questions (stdio) doesn't need it, and a server that
+    // dies at startup just shows up in the assistant as "failed to connect" with no explanation.
+    ownsSync = false;
     if (err.code === 'EADDRINUSE' && await isTabStateServer(PORT)) {
-      ownsSync = false; // another client's copy receives syncs; we read the same data file
+      // Another client's copy receives syncs; we read the same data file.
       console.error(`tab-state-mcp: another Tab State server already owns port ${PORT} — sharing its data (${DEFAULT_DATA_DIR})`);
-      // If that copy's client quits, take the port over so syncs keep landing somewhere.
-      const retry = setInterval(async () => {
-        try {
-          await listen(syncServer, PORT);
-          ownsSync = true;
-          clearInterval(retry);
-          console.error(`tab-state-mcp: took over the sync endpoint on port ${PORT}`);
-        } catch { /* still owned by another copy */ }
-      }, 30_000);
-      retry.unref();
     } else {
-      console.error(`tab-state-mcp: could not listen on ${HOST}:${PORT} (${err.code === 'EADDRINUSE' ? 'already in use by something else — set TAB_STATE_MCP_PORT to another port' : err.message})`);
-      process.exit(1);
+      console.error(`tab-state-mcp: WARNING — can't receive syncs on ${HOST}:${PORT} (${err.code === 'EADDRINUSE' ? 'port in use by another app — set TAB_STATE_MCP_PORT and the same port in the extension\'s Settings' : err.message}). Still answering from the last synced data; retrying every 30s.`);
     }
+    // If the port frees up (e.g. the copy that owned it quits), take it over so syncs keep landing.
+    const retry = setInterval(async () => {
+      try {
+        await listen(syncServer, PORT);
+        ownsSync = true;
+        clearInterval(retry);
+        console.error(`tab-state-mcp: took over the sync endpoint on port ${PORT}`);
+      } catch { /* still in use */ }
+    }, 30_000);
+    retry.unref();
   }
 
   let remoteServer = null;

@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import http from 'node:http';
 import { mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -100,5 +101,31 @@ test('a second copy (another MCP client) shares the sync port instead of crashin
   } finally {
     first.kill();
     second.kill();
+  }
+});
+
+test('the port taken by some other app: the server still starts and answers (it just can\'t receive syncs)', async () => {
+  const port = 9600 + Math.floor(Math.random() * 300);
+  const squatter = http.createServer((q, r) => { r.writeHead(200); r.end('not tab state'); });
+  await new Promise((r) => squatter.listen(port, '127.0.0.1', r));
+  const child = spawn('node', [path.join(MCP_DIR, '..', 'plugins/tab-state/server/tab-state-mcp.mjs')], {
+    env: { ...process.env, TAB_STATE_MCP_PORT: String(port) }, stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  let log = '';
+  let out = '';
+  let exitCode = null;
+  child.stderr.on('data', (d) => { log += d; });
+  child.stdout.on('data', (d) => { out += d; });
+  child.on('exit', (c) => { exitCode = c; });
+  try {
+    child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } })}\n`);
+    const deadline = Date.now() + 5000;
+    while (!out.includes('"id":1') && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100));
+    assert.equal(exitCode, null, `must not exit (log: ${log})`);
+    assert.match(log, /can't receive syncs/);
+    assert.match(out, /"serverInfo":\{"name":"tab-state"/, 'still answers MCP');
+  } finally {
+    child.kill();
+    squatter.close();
   }
 });
