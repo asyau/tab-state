@@ -63,14 +63,22 @@ const server = http.createServer((req, res) => {
   res.end(body ? `<!doctype html><html><head>${iconLink}</head><body style="font:16px/1.6 sans-serif;max-width:700px;margin:auto">${body}</body></html>` : 'nope');
 });
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const BASE = `http://127.0.0.1:${server.address().port}`;
+// Each page gets its own site name (all served by this one local server, via Chrome's
+// --host-resolver-rules below), so the screenshots show distinct sites — History groups visits
+// per site — instead of everything under "127.0.0.1". `.test` is a reserved TLD: never real.
+const PORT = server.address().port;
+const HOSTS = {
+  '/docs': 'docs.stripe.test', '/rust': 'blog.rust-lang.test', '/isaac': 'developer.nvidia.test',
+  '/recipe': 'recipes.test', '/thread': 'forum.keyboards.test', '/newsletter': 'devweekly.test', '/gmail': 'mail.google.test',
+};
+const urlFor = (p) => `http://${HOSTS[p]}:${PORT}${p}`;
 
 const context = await chromium.launchPersistentContext('', {
   headless: !process.env.HEADED,
   channel: 'chromium',
   ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
   viewport: SIZE,
-  args: [`--disable-extensions-except=${ROOT}`, `--load-extension=${ROOT}`],
+  args: [`--disable-extensions-except=${ROOT}`, `--load-extension=${ROOT}`, '--host-resolver-rules=MAP *.test 127.0.0.1'],
 });
 
 let [sw] = context.serviceWorkers();
@@ -83,7 +91,7 @@ const bg = (fn, arg) => sw.evaluate(fn, arg);
 async function open(p, { ms = 400 } = {}) {
   const page = await context.newPage();
   await page.setViewportSize(SIZE);
-  await page.goto(BASE + p);
+  await page.goto(urlFor(p));
   await page.bringToFront();
   await sleep(ms);
   return page;
@@ -116,10 +124,10 @@ await sleep(19_000);
 await open('/recipe', { ms: 4000 });
 
 // Ghosts, opened in the background, never focused at all.
-await bg(async (base) => {
-  await chrome.tabs.create({ url: `${base}/thread`, active: false });
-  await chrome.tabs.create({ url: `${base}/newsletter`, active: false });
-}, BASE);
+await bg(async (urls) => {
+  await chrome.tabs.create({ url: urls.thread, active: false });
+  await chrome.tabs.create({ url: urls.newsletter, active: false });
+}, { thread: urlFor('/thread'), newsletter: urlFor('/newsletter') });
 await sleep(1200);
 
 // Gmail: a real (if brief) look — enough to clear "ghost" — then watched daily.
@@ -170,6 +178,37 @@ await settings.bringToFront();
 await sleep(800);
 await settings.screenshot({ path: path.join(OUT, '4-settings.png') });
 console.log('saved 4-settings.png');
+
+// History: every tab by day, grouped per site, with the time bar and the details panel open on the
+// tab that was read most (hovered, the way you'd use it).
+const history = await context.newPage();
+await history.setViewportSize(SIZE);
+await history.goto(`chrome-extension://${extId}/ui/history.html`);
+await history.bringToFront();
+await history.click('.hs-switch'); // show every visit: the test session is short
+await sleep(400);
+await history.hover('.hs-row:has-text("Authentication")');
+await sleep(500);
+await history.screenshot({ path: path.join(OUT, '5-history.png') });
+console.log('saved 5-history.png');
+
+// Tab groups: group two sets of the open tabs the way "Group related tabs" would, then show them
+// on the dashboard (and in Chrome's tab bar).
+await bg(async () => {
+  const tabs = await chrome.tabs.query({});
+  const ids = (re) => tabs.filter((t) => re.test(t.url || '')).map((t) => t.id);
+  const dev = await chrome.tabs.group({ tabIds: ids(/\/(docs|rust)$/) });
+  await chrome.tabGroups.update(dev, { title: 'Dev docs', color: 'blue' });
+  const later = await chrome.tabs.group({ tabIds: ids(/\/(isaac|newsletter|thread)$/) });
+  await chrome.tabGroups.update(later, { title: 'Read later', color: 'orange' });
+});
+await dash.bringToFront();
+await sleep(1500);
+await dash.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
+await dash.mouse.move(5, 790); // nothing hovered, so every card is its one-line row
+await sleep(400);
+await dash.screenshot({ path: path.join(OUT, '6-tab-groups.png') });
+console.log('saved 6-tab-groups.png');
 
 await context.close();
 server.close();

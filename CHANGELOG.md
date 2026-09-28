@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+(Nothing yet — add changes here, then cut a version: bump `manifest.json` and `package.json` together.)
+
+## 1.0.0 — first public release (Chrome Web Store)
+
+### Core
+
+- Behavior-based sorting into Just Glanced, Partially Read, Deep Focus and Ghost, from active
+  reading time, scroll depth, and copy/highlight activity
+- Kanban dashboard with a one-line summary per tab that starts with what the page is about
+  (meta description, falling back to the page's `<h1>`)
+- Card detail view: where you stopped, last selected text, your note, and an on-demand AI insight
+- Purge Ghost & Glanced with confirmation and a 30-second undo; pinned, active and noted tabs are
+  never purged
+- Follow-up notes, session recap, daily check-list, editable thresholds
+- Optional AI-assisted tab grouping (off by default, always confirmed before applying)
+- Summary providers: deterministic built-in (default), on-device Gemini Nano, any
+  OpenAI-compatible API, Anthropic. Cloud providers never receive page body text or selected text
+- Keyboard-accessible dashboard: focus management in the detail dialog, focus preserved across
+  live updates, an in-progress note is never lost to a refresh
+- Chrome Web Store package build, manifest/permission consistency tests, screenshots and promo
+  images generated from the real extension
+
+### Added before launch
+
 - **Full history, kept forever.** Closed tabs are no longer deleted after 7 days (or 1 hour for
   low-engagement ones) — everything's kept, browsable day by day on a new History page. The one
   exception: an explicitly Purged tab is still cleaned up after its undo window. Needs the new
@@ -92,23 +116,3 @@
 - Optional self-hosted "Tab State Pro" tier (`pro-proxy/`): a new hosted provider that needs no
   API key, gated by an ExtensionPay subscription, backed by a Cloudflare Worker you deploy
   yourself. See [`pro-proxy/README.md`](pro-proxy/README.md), including its security model.
-
-## 1.0.0
-
-First public release.
-
-- Behavior-based sorting into Just Glanced, Partially Read, Deep Focus and Ghost, from active
-  reading time, scroll depth, and copy/highlight activity
-- Kanban dashboard with a one-line summary per tab that starts with what the page is about
-  (meta description, falling back to the page's `<h1>`)
-- Card detail view: where you stopped, last selected text, your note, and an on-demand AI insight
-- Purge Ghost & Glanced with confirmation and a 30-second undo; pinned, active and noted tabs are
-  never purged
-- Follow-up notes, session recap, daily check-list, editable thresholds
-- Optional AI-assisted tab grouping (off by default, always confirmed before applying)
-- Summary providers: deterministic built-in (default), on-device Gemini Nano, any
-  OpenAI-compatible API, Anthropic. Cloud providers never receive page body text or selected text
-- Keyboard-accessible dashboard: focus management in the detail dialog, focus preserved across
-  live updates, an in-progress note is never lost to a refresh
-- Chrome Web Store package build, manifest/permission consistency tests, screenshots and promo
-  images generated from the real extension

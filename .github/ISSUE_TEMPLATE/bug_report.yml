@@ -1,0 +1,60 @@
+name: 🐛 Bug report
+description: Something in Tab State doesn't work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please **blur or remove private tab titles** from screenshots and logs.
+        Security or privacy problem? Don't file it here — see [SECURITY.md](https://github.com/asyau/tab-state/blob/main/SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+      placeholder: "I clicked \"Group related tabs\" and …"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Click …
+        3. See …
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where?
+      options:
+        - Dashboard (board, cards, purge)
+        - History page
+        - Settings
+        - AI summaries / recap / insights / grouping
+        - AI assistant sharing (Claude Desktop / Claude Code / Codex / ChatGPT)
+        - Tracking (a tab in the wrong bucket, wrong reading time)
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Tab State and Chrome versions, and your OS
+      description: Tab State's version is on chrome://extensions; Chrome's is on chrome://version.
+      placeholder: "Tab State 1.0.0, Chrome 131, macOS 15"
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Summary provider or AI assistant (if relevant)
+      placeholder: "OpenAI gpt-5 / Ollama llama3.2 / Claude Desktop — and `node --version` for the assistant feature"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors or screenshots
+      description: "chrome://extensions → Developer mode → the Tab State card → \"Errors\" or \"service worker\". Paste text, or drag in a screenshot."
+      render: text

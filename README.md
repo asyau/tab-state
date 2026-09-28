@@ -15,6 +15,7 @@
   <img src="https://img.shields.io/badge/Chrome-MV3-4285F4?logo=googlechrome&logoColor=white" alt="Chrome Manifest V3">
   <img src="https://img.shields.io/badge/privacy-100%25%20local-2f8a5b" alt="100% local">
   <a href="#-ask-your-ai-about-your-tabs"><img src="https://img.shields.io/badge/works%20with-Claude%20·%20Codex%20·%20ChatGPT-d97757" alt="Works with Claude, Codex and ChatGPT"></a>
+  <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-2f8a5b" alt="PRs welcome"></a>
 </p>
 
 <p align="center">
@@ -22,7 +23,8 @@
   <a href="#-what-you-get">Features</a> ·
   <a href="#-ask-your-ai-about-your-tabs">Use with Claude / ChatGPT</a> ·
   <a href="#-how-tabs-are-sorted">How it works</a> ·
-  <a href="PRIVACY.md">Privacy</a>
+  <a href="PRIVACY.md">Privacy</a> ·
+  <a href="#-contributing">Contributing</a>
 </p>
 
 <p align="center">
@@ -118,6 +120,10 @@ on-device Gemini Nano, OpenAI-compatible APIs (incl. local Ollama), or Claude.
 </table>
 
 <table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/5-history.png" alt="History page: every tab by day, a bar of where reading time went, and a details panel"><br><sub>History: every tab by day, where your time went, details on hover</sub></td>
+    <td width="50%"><img src="docs/screenshots/6-tab-groups.png" alt="Dashboard with two Chrome tab groups, Dev docs and Read later"><br><sub>Tab groups, shown on the dashboard and in Chrome's tab bar</sub></td>
+  </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/2-detail.png" alt="Card detail view with an AI insight, where you stopped, and the last selected text"><br><sub>Details: an insight, where you stopped, what you copied</sub></td>
     <td width="50%"><img src="docs/screenshots/3-purge-confirm.png" alt="Purge confirmation banner"><br><sub>Purge asks first, and can be undone</sub></td>
@@ -307,11 +313,28 @@ versus reviewed only.
 
 </details>
 
+## 🤝 Contributing
+
+Tab State is open source and contributions are very welcome — code or not.
+
+- 🐛 [Report a bug](https://github.com/asyau/tab-state/issues/new?template=bug_report.yml) ·
+  💡 [Suggest a feature](https://github.com/asyau/tab-state/issues/new?template=feature_request.yml) ·
+  🔒 [Report a security issue privately](SECURITY.md)
+- 🧑‍💻 Want to code? Start with [`good first issue`](https://github.com/asyau/tab-state/labels/good%20first%20issue)s,
+  and read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests and house rules (short version:
+  `npm install && npm test`, no build step, privacy first).
+- ⭐ Using it and liking it? A star helps other people find it.
+
+Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## 🗺️ Roadmap
 
 - Learning from which tabs you flag, so it can suggest them.
 - A published, official "Tab State Pro" you can subscribe to without deploying anything yourself.
 - A published ChatGPT app, so ChatGPT works without running your own tunnel.
+- Chrome native messaging for the AI-assistant bridge (no local port at all).
+
+Have an opinion on what's next? [Open a feature request](https://github.com/asyau/tab-state/issues/new?template=feature_request.yml).
 
 ## License
 

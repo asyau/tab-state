@@ -8,6 +8,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { dismissWelcomeTab } from './welcome-tab.mjs';
 
 const ROOT = process.env.EXT_DIR || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -24,6 +25,9 @@ let [sw] = context.serviceWorkers();
 if (!sw) sw = await context.waitForEvent('serviceworker', { timeout: 15_000 });
 sw.on('console', (m) => { if (m.type() === 'error') problems.push(`sw: ${m.text()}`); });
 const extId = new URL(sw.url()).host;
+// Waits until the worker's chrome.* APIs are bound (they aren't the instant Playwright first sees
+// it) and closes the install-time welcome tab.
+await dismissWelcomeTab(sw);
 const manifest = await sw.evaluate(() => chrome.runtime.getManifest());
 console.log(`loaded ${manifest.name} ${manifest.version} from ${ROOT}`);
 

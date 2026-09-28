@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Security or privacy problem
+    url: https://github.com/asyau/tab-state/security/advisories/new
+    about: Please report privately — see SECURITY.md.
+  - name: 🤖 AI assistant won't connect ("failed to connect")
+    url: https://github.com/asyau/tab-state/blob/main/mcp-server/README.md#troubleshooting-tab-state-failed-to-connect
+    about: Common fixes (Node.js, updating the plugin, reconnecting) — check these first.

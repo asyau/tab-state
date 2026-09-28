@@ -1,6 +1,6 @@
 # Tab State — Privacy Policy
 
-_Last updated: 2026-09-23_
+_Last updated: 2026-09-29_
 
 Tab State is a Chrome extension that tracks how you engage with your open tabs (active reading
 time, scroll depth, and interactions) so it can sort them on a dashboard and write a one-line
@@ -57,6 +57,42 @@ deterministic, on-device sentence generator unless you explicitly turn on an AI 
 
 If you use a local model server (e.g. Ollama) as your "API," nothing leaves your machine either.
 
+## Sharing with AI assistants on your computer (optional, off by default)
+
+Settings → **Share your tabs** lets AI assistants that run on your own computer — Claude Desktop,
+Claude Code, OpenAI's Codex, or any MCP client — answer questions about your tabs. It is **off**
+until you turn it on, and you can turn it off at any time.
+
+- **What is shared:** for each tracked tab, its URL, title, description, your note, its
+  engagement label (e.g. Deep Focus) and one-line summary, active time, scroll percentage,
+  timestamps, and whether it's open or closed — the same things shown on your dashboard — plus
+  the session recap line. **Never** page body text, text you selected, or the text near where
+  you stopped.
+- **Where it goes:** only to the Tab State helper program running on your own computer, at
+  `127.0.0.1` (your computer's own address), which saves it in a file in your home folder
+  (`~/.tab-state-mcp/`) readable only by your user account. The extension finds that helper by
+  asking a few fixed local ports whether they're Tab State, and sends nothing to anything that
+  doesn't identify itself as Tab State. Web pages cannot send data to or read data from the helper.
+- **What your assistant does with it:** when you ask your assistant a question, it reads what it
+  needs through the helper and, like everything else in that conversation, sends it to that
+  assistant's provider (for example Anthropic for Claude, or OpenAI for Codex) under **their**
+  privacy terms. Tab State itself sends nothing to them.
+- **ChatGPT (advanced, manual):** ChatGPT can only reach helpers on the internet, so using it means
+  you start a separate "remote mode" yourself and run a tunnel (such as Cloudflare's) that makes
+  the helper reachable at a secret web address you give to ChatGPT. While that tunnel runs, anyone
+  with that full address can read the same shared data, and OpenAI receives what ChatGPT reads.
+  Tab State never starts this on its own.
+
+To stop sharing, untick **Share my tab history** in Settings; to delete what was shared, delete
+the `~/.tab-state-mcp/` folder.
+
+## Tab groups
+
+If you use **Group related tabs**, Tab State creates Chrome tab groups for the tabs you confirm,
+and the dashboard reads your tab groups (names, colors, which tabs are in them) to show them. This
+stays in your browser; the only data sent anywhere for grouping is described above under your AI
+provider.
+
 ## Limited Use disclosure
 
 Tab State's use of any data obtained through a connected AI provider adheres to the
@@ -68,7 +104,8 @@ that single, disclosed feature.
 ## What Tab State does not do
 
 - No accounts, no sign-in, no analytics, no tracking pixels, no advertising SDKs
-- No data is sold, shared, or used for any purpose other than showing it back to you
+- No data is sold, shared with third parties, or used for any purpose other than showing it back
+  to you (and, only if you turn them on, the AI features described above)
 - No data collection continues after you uninstall the extension (local storage is cleared by
   Chrome when an extension is removed)
 

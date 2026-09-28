@@ -1,5 +1,6 @@
 import { THRESHOLDS } from '../lib/config.js';
 import { findMcpServer } from '../lib/mcp-sync.js';
+import { PRO_TIER_ENABLED } from '../lib/extpay.js';
 import { OPENAI_PRESETS, loadSettings, saveSettings } from '../lib/settings.js';
 import {
   PROVIDERS, enableNano, nanoAvailability, sendsDataOffDevice, summarize,
@@ -54,7 +55,9 @@ function send(type, payload = {}) {
 
 function renderProviders() {
   const wrap = $('#providers');
-  wrap.replaceChildren(...Object.values(PROVIDERS).map((p) => {
+  // "Tab State Pro" only once it's really live (lib/extpay.js PRO_TIER_ENABLED).
+  const offered = Object.values(PROVIDERS).filter((p) => p.id !== 'hosted' || PRO_TIER_ENABLED || settings.provider === 'hosted');
+  wrap.replaceChildren(...offered.map((p) => {
     const label = document.createElement('label');
     label.className = 'option';
     const input = document.createElement('input');
