@@ -12,8 +12,9 @@
   line only, 220 characters, quotes stripped), so any reply formatted over several lines — what
   most models send — was destroyed before parsing. Grouping now reads the reply untouched,
   understands fenced / wrapped / `indices` variants, keeps the complete groups from a reply cut
-  off mid-way, asks for enough output (1,500 tokens; the self-hosted Pro proxy now honours this,
-  capped), and sends at most the 60 most recently used tabs. Clearer message when a model really
+  off mid-way, asks Claude for enough output (1,500 tokens; the self-hosted Pro proxy now honours
+  this, capped) — and sends no output limit to OpenAI-compatible APIs, since newer OpenAI models
+  reject `max_tokens` (HTTP 400: "use 'max_completion_tokens'"), and sends at most the 60 most recently used tabs. Clearer message when a model really
   does answer in the wrong format.
 - **Security: web pages can no longer write to the local MCP server.** Its sync endpoint used to
   accept a POST from any origin, so any site open in your browser could replace the tab list your

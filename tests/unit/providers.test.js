@@ -276,6 +276,22 @@ test('proposeGroups asks Anthropic for enough output tokens for a long group lis
   assert.ok(body.max_tokens >= 1000, `max_tokens ${body.max_tokens}`);
 });
 
+// Regression: newer OpenAI models (gpt-5, o-series) reject `max_tokens` with HTTP 400 ("use
+// 'max_completion_tokens' instead"), and for those reasoning models a completion cap also eats
+// into hidden reasoning, while other OpenAI-compatible servers don't all accept the new name. So no
+// output limit is sent to OpenAI-compatible APIs at all — for grouping or summaries.
+test('OpenAI-compatible requests never send an output-token parameter', async () => {
+  const settings = mergeSettings({ provider: 'openai', openai: { apiKey: 'k', model: 'gpt-5' } });
+  const bodies = [];
+  mockFetch((url, init) => { bodies.push(JSON.parse(init.body)); return json(200, { choices: [{ message: { content: PRETTY } }] }); });
+  const out = await proposeGroups(four, settings);
+  assert.equal(out.groups.length, 2);
+  for (const b of bodies) {
+    assert.equal('max_tokens' in b, false, 'max_tokens is rejected by newer OpenAI models');
+    assert.equal('max_completion_tokens' in b, false, 'not every OpenAI-compatible server supports it');
+  }
+});
+
 test('proposeGroups only sends a bounded number of tabs (most recently used first)', async () => {
   const settings = mergeSettings({ provider: 'openai', openai: { apiKey: 'k', model: 'm' } });
   const many = Array.from({ length: 150 }, (_, i) => ({ id: `m${i}`, title: `Tab ${i}`, url: `https://s${i}.com/`, lastActiveAt: i }));

@@ -17,7 +17,13 @@ const TITLES = ['Stripe API: Authentication', 'Stripe API: Webhooks', 'Pasta rec
 const server = http.createServer((req, res) => {
   if (req.url.startsWith('/v1/chat/completions')) {
     let b = ''; req.on('data', (c) => { b += c; }); req.on('end', () => {
-      lastPrompt = JSON.parse(b).messages[1].content;
+      const reqBody = JSON.parse(b);
+      if ('max_tokens' in reqBody) { // what OpenAI's newer models answer
+        res.writeHead(400, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: { message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead." } }));
+        return;
+      }
+      lastPrompt = reqBody.messages[1].content;
       const idx = (t) => Number(lastPrompt.split('\n').find((l) => l.includes(t)).split('.')[0]);
       const content = `Sure! Here are the groups:\n\`\`\`json\n[\n  {\n    "name": "Stripe docs",\n    "indexes": [${idx('Authentication')}, ${idx('Webhooks')}]\n  },\n  {\n    "name": "Cooking",\n    "indexes": [${idx('Pasta')}, ${idx('Soup')}]\n  }\n]\n\`\`\`\nLet me know if you want changes.`;
       res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });

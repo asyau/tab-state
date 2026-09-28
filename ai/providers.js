@@ -118,7 +118,11 @@ async function readError(res) {
   return `HTTP ${res.status}: ${String(detail).slice(0, 200)}${hint}`;
 }
 
-async function openaiRun(systemPrompt, userPrompt, settings, { maxTokens } = {}) {
+// No output-token limit is sent here, on purpose: newer OpenAI models (gpt-5, o-series) reject
+// `max_tokens` with HTTP 400, their replacement `max_completion_tokens` also counts hidden reasoning
+// (so a cap can leave no room for the answer), and not every OpenAI-compatible server (Ollama,
+// LM Studio, Groq, OpenRouter...) accepts the new name. Model defaults are ample for our replies.
+async function openaiRun(systemPrompt, userPrompt, settings) {
   const cfg = settings.openai;
   if (!cfg.baseUrl) throw new Error('Set a base URL');
   if (!cfg.model) throw new Error('Set a model name');
@@ -134,7 +138,6 @@ async function openaiRun(systemPrompt, userPrompt, settings, { maxTokens } = {})
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      ...(maxTokens ? { max_tokens: maxTokens } : {}),
     }),
   });
   if (!res.ok) throw new Error(await readError(res));
