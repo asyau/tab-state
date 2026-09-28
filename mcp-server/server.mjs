@@ -10,8 +10,8 @@
 // The synced data is written to ~/.tab-state-mcp/data.json (owner-only permissions) and never
 // leaves your machine through this process — there is no outbound network call here at all.
 //
-//   node server.mjs                 (default sync port 8765)
-//   TAB_STATE_MCP_PORT=9000 node server.mjs
+//   node server.mjs                 (sync port: first free of 47651-47655, see SYNC_PORTS)
+//   TAB_STATE_MCP_PORT=9000 node server.mjs   (pin one port instead)
 //   node server.mjs --remote        (for ChatGPT: see "Remote mode" below and the README)
 //
 // Several MCP clients (Claude Desktop, Claude Code, Codex...) may each start their own copy. Only
@@ -31,8 +31,15 @@ import {
   validatePayload, load, save, listTabs, searchTabs, getTab, getRecap, DEFAULT_DATA_DIR,
 } from './store.mjs';
 
-const PORT = Number(process.env.TAB_STATE_MCP_PORT) || 8765;
-const REMOTE_PORT = Number(process.env.TAB_STATE_MCP_REMOTE_PORT) || 8766;
+// The sync port. Not one fixed number: popular defaults collide (AnkiConnect, for one, listens on
+// 127.0.0.1:8765, this server's old default). The server takes the first free port of a short,
+// uncommon list, and the extension probes the same list for a server whose /health says it's Tab
+// State (lib/mcp-sync.js — keep the two lists in sync). Port 0 (any free port) isn't an option:
+// an extension can't read a file to learn which port was picked. TAB_STATE_MCP_PORT pins one port.
+export const SYNC_PORTS = [47651, 47652, 47653, 47654, 47655];
+const PINNED_PORT = Number(process.env.TAB_STATE_MCP_PORT) || null;
+const REMOTE_PORT = Number(process.env.TAB_STATE_MCP_REMOTE_PORT) || 47660;
+const SERVER_VERSION = '1.1.0'; // keep equal to package.json / plugin manifests
 const HOST = '127.0.0.1'; // never 0.0.0.0: this must not be reachable from the network
 
 // --- Sync endpoint: the extension POSTs its snapshot here -------------------------------------
@@ -81,7 +88,7 @@ export function createSyncServer({ onSync, dataDir } = {}) {
       res.end();
       return;
     }
-    if (req.method === 'GET' && req.url === '/health') { send(200, { ok: true }); return; }
+    if (req.method === 'GET' && req.url === '/health') { send(200, { ok: true, service: 'tab-state', version: SERVER_VERSION }); return; }
     if (req.method !== 'POST' || req.url !== '/sync') { send(404, { error: 'not found' }); return; }
     if (!/^application\/json\b/i.test(req.headers['content-type'] || '')) {
       send(415, { error: 'content-type must be application/json' });
@@ -124,7 +131,7 @@ function textResult(text) {
 }
 
 export function createMcpServer({ dataDir } = {}) {
-  const mcp = new McpServer({ name: 'tab-state', version: '1.0.0' });
+  const mcp = new McpServer({ name: 'tab-state', version: SERVER_VERSION });
 
   mcp.registerTool('list_tabs', {
     title: 'List tracked tabs',
@@ -183,7 +190,7 @@ export function createMcpServer({ dataDir } = {}) {
 // HTTP transport so a tunnel (cloudflared, ngrok, OpenAI's Secure MCP Tunnel) can expose them.
 //
 // This is your browsing history, so it's locked down:
-//  - A separate listener (default 127.0.0.1:8766) that serves ONLY the MCP endpoint — the sync
+//  - A separate listener (default 127.0.0.1:47660) that serves ONLY the MCP endpoint — the sync
 //    port is never what you tunnel, so nobody on the internet can overwrite your data.
 //  - The endpoint path embeds a random 256-bit token: /mcp/<token>. Every other path is a 404,
 //    and the token is compared in constant time. `Authorization: Bearer <token>` on /mcp works
@@ -256,7 +263,8 @@ export function createRemoteServer({ token, dataDir } = {}) {
 async function isTabStateServer(port) {
   try {
     const res = await fetch(`http://${HOST}:${port}/health`, { signal: AbortSignal.timeout(1500) });
-    return res.ok && (await res.json())?.ok === true;
+    const body = res.ok ? await res.json() : null;
+    return body?.service === 'tab-state' || (body?.ok === true && Object.keys(body).length === 1); // older copies: {ok:true}
   } catch {
     return false;
   }
@@ -271,6 +279,15 @@ function listen(server, port) {
 
 // --- Entry point ---------------------------------------------------------------------------
 
+/** For people and tools (e.g. `cat ~/.tab-state-mcp/port`), not the extension — Chrome extensions
+ *  can't read files; it finds the port by probing SYNC_PORTS. */
+function writePortFile(port, dir = DEFAULT_DATA_DIR) {
+  try {
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    writeFileSync(path.join(dir, 'port'), `${port}\n`, { mode: 0o600 });
+  } catch { /* informational only */ }
+}
+
 let started = false;
 
 /** Start the server. Idempotent: the plugin bundle's entry calls it directly (see plugin-entry.mjs),
@@ -281,28 +298,45 @@ export async function main() {
   const remote = process.argv.includes('--remote') || process.env.TAB_STATE_MCP_REMOTE === '1';
 
   const syncServer = createSyncServer();
-  let ownsSync = true;
-  try {
-    await listen(syncServer, PORT);
-    console.error(`tab-state-mcp: sync endpoint listening on http://${HOST}:${PORT} (data: ${DEFAULT_DATA_DIR})`);
-  } catch (err) {
-    // Never exit over the sync port: answering questions (stdio) doesn't need it, and a server that
-    // dies at startup just shows up in the assistant as "failed to connect" with no explanation.
-    ownsSync = false;
-    if (err.code === 'EADDRINUSE' && await isTabStateServer(PORT)) {
-      // Another client's copy receives syncs; we read the same data file.
-      console.error(`tab-state-mcp: another Tab State server already owns port ${PORT} — sharing its data (${DEFAULT_DATA_DIR})`);
-    } else {
-      console.error(`tab-state-mcp: WARNING — can't receive syncs on ${HOST}:${PORT} (${err.code === 'EADDRINUSE' ? 'port in use by another app — set TAB_STATE_MCP_PORT and the same port in the extension\'s Settings' : err.message}). Still answering from the last synced data; retrying every 30s.`);
-    }
-    // If the port frees up (e.g. the copy that owned it quits), take it over so syncs keep landing.
-    const retry = setInterval(async () => {
+  const candidates = PINNED_PORT ? [PINNED_PORT] : SYNC_PORTS;
+  let syncPort = null; // the port this process listens on, if any
+
+  /** Take the first free candidate port — or find that another Tab State copy already has one,
+   *  in which case we just share its data file. Never throws, never exits: answering questions
+   *  over stdio doesn't need the sync port, and a server that dies at startup only shows up in
+   *  the assistant as "failed to connect". Returns a status for logging. */
+  async function claimSyncPort() {
+    const taken = [];
+    for (const port of candidates) {
       try {
-        await listen(syncServer, PORT);
-        ownsSync = true;
+        await listen(syncServer, port);
+        syncPort = port;
+        writePortFile(port);
+        return { owned: port };
+      } catch (err) {
+        if (err.code === 'EADDRINUSE' && await isTabStateServer(port)) return { shared: port };
+        taken.push(`${port} (${err.code || err.message})`);
+      }
+    }
+    return { none: taken };
+  }
+
+  const claim = await claimSyncPort();
+  if (claim.owned) {
+    console.error(`tab-state-mcp: sync endpoint listening on http://${HOST}:${claim.owned} (data: ${DEFAULT_DATA_DIR})`);
+  } else if (claim.shared) {
+    console.error(`tab-state-mcp: another Tab State server already receives syncs on port ${claim.shared} — sharing its data (${DEFAULT_DATA_DIR})`);
+  } else {
+    console.error(`tab-state-mcp: WARNING — can't receive syncs: ports ${claim.none.join(', ')} are all in use by other apps${PINNED_PORT ? '' : ' (or set TAB_STATE_MCP_PORT, and the same port in the extension\'s Settings → Advanced)'}. Still answering from the last synced data; retrying every 30s.`);
+  }
+  if (!claim.owned) {
+    // Keep trying, so syncs keep landing if the copy that had a port quits or a port frees up.
+    const retry = setInterval(async () => {
+      const again = await claimSyncPort();
+      if (again.owned) {
         clearInterval(retry);
-        console.error(`tab-state-mcp: took over the sync endpoint on port ${PORT}`);
-      } catch { /* still in use */ }
+        console.error(`tab-state-mcp: now receiving syncs on port ${again.owned}`);
+      }
     }, 30_000);
     retry.unref();
   }
@@ -335,7 +369,7 @@ export async function main() {
 
   for (const sig of ['SIGINT', 'SIGTERM']) {
     process.on(sig, () => {
-      if (ownsSync) syncServer.close();
+      if (syncPort) syncServer.close();
       remoteServer?.close();
       process.exit(0);
     });

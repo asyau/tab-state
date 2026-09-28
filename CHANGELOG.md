@@ -7,6 +7,13 @@
   exception: an explicitly Purged tab is still cleaned up after its undo window. Needs the new
   `unlimitedStorage` permission, since `chrome.storage.local`'s default 10MB cap could otherwise
   be hit by an active user over months of use.
+- **The MCP server and the extension now find each other automatically** instead of both assuming
+  port 8765, which collides with common tools (AnkiConnect uses exactly 127.0.0.1:8765). The
+  server takes the first free port of 47651–47655 (and writes it to `~/.tab-state-mcp/port`); the
+  extension probes those ports for a `/health` that says `"service": "tab-state"` and remembers
+  it — never sending tab data to some other app. 8765 is still tried last for older servers, and a
+  previously saved 8765 setting now means "automatic". Settings shows which port it found; the
+  port field is blank ("Automatic") unless you pin one. ChatGPT remote mode moved to 47660.
 - MCP server: no longer exits when its sync port is taken by another app (it showed up in Claude
   Code only as "failed to connect") — it keeps answering from the last synced data and retries the
   port. The plugin's bundled server starts unconditionally instead of via a main-module path check

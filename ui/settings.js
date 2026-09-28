@@ -1,4 +1,5 @@
 import { THRESHOLDS } from '../lib/config.js';
+import { findMcpServer } from '../lib/mcp-sync.js';
 import { OPENAI_PRESETS, loadSettings, saveSettings } from '../lib/settings.js';
 import {
   PROVIDERS, enableNano, nanoAvailability, sendsDataOffDevice, summarize,
@@ -230,10 +231,10 @@ async function checkMcpStatus() {
     setMcpPill('off', 'Off');
     return;
   }
+  const found = await findMcpServer(settings.mcpSync);
   try {
-    const res = await fetch(`http://127.0.0.1:${settings.mcpSync.port}/health`, { signal: AbortSignal.timeout(2000) });
-    if (!res.ok) throw new Error(String(res.status));
-    status.textContent = '✅ Connected — your assistant can see your tabs.';
+    if (!found) throw new Error('not found');
+    status.textContent = `✅ Connected — your assistant can see your tabs. (Tab State server on port ${found})`;
     setMcpPill('ok', 'Connected');
     mcpTimer = setTimeout(checkMcpStatus, 30_000);
   } catch {
@@ -250,9 +251,11 @@ $('#mcp-enabled').addEventListener('change', async (e) => {
 });
 
 $('#mcp-port').addEventListener('change', async (e) => {
-  const port = Number(e.target.value);
-  settings.mcpSync = { ...settings.mcpSync, port: Number.isFinite(port) && port > 0 ? port : 8765 };
-  e.target.value = settings.mcpSync.port;
+  const raw = e.target.value.trim();
+  const port = Number(raw);
+  // Blank = automatic (find the server on its usual ports); a number pins exactly that port.
+  settings.mcpSync = { ...settings.mcpSync, port: raw && Number.isInteger(port) && port > 0 && port < 65536 ? port : null };
+  e.target.value = settings.mcpSync.port ?? '';
   await saveSettings(settings);
   checkMcpStatus();
 });
@@ -379,7 +382,7 @@ $('#clear').addEventListener('click', async () => {
   fillThresholdFields();
   $('#grouping-enabled').checked = !!settings.grouping?.enabled;
   $('#mcp-enabled').checked = !!settings.mcpSync?.enabled;
-  $('#mcp-port').value = settings.mcpSync?.port || 8765;
+  $('#mcp-port').value = settings.mcpSync?.port ?? '';
   checkMcpStatus();
   renderNano();
   renderWatchlist();

@@ -27,7 +27,7 @@ Chrome (Tab State extension)  --POST /sync-->  tab-state-mcp (this process)  <--
 
 Whichever you use, also turn on **"Share my tab history with AI assistants on this computer"** in the extension: [Connect it to Chrome](#connect-it-to-chrome).
 Several assistants can run at the same time — the first copy to start receives the extension's
-syncs on port 8765, the others notice and share the same data file (and take over the port if the
+syncs, the others notice and share the same data file (and take over the port if the
 first one quits).
 
 ## Claude Code and Codex plugin
@@ -77,10 +77,10 @@ npm install
 npm run remote          # = node server.mjs --remote
 ```
 
-It prints a local endpoint like `http://127.0.0.1:8766/mcp/<token>`. Then:
+It prints a local endpoint like `http://127.0.0.1:47660/mcp/<token>`. Then:
 
 1. **Expose only that port over HTTPS.** For example with Cloudflare's free quick tunnel:
-   `cloudflared tunnel --url http://127.0.0.1:8766` → prints an `https://….trycloudflare.com` URL.
+   `cloudflared tunnel --url http://127.0.0.1:47660` → prints an `https://….trycloudflare.com` URL.
    (ngrok, or OpenAI's Secure MCP Tunnel, work too.)
 2. **In ChatGPT:** open [chatgpt.com/plugins](https://chatgpt.com/plugins), select **+** and
    create a developer-mode app for a remote MCP server, with the URL
@@ -98,11 +98,11 @@ internet for as long as the tunnel runs:
   and restart to rotate it.
 - The remote listener serves **only** the MCP endpoint; every other path (including the
   extension's `/sync`) is a 404, so nobody can write to your data through the tunnel. The sync
-  port (8765) should never be tunnelled.
+  port (47651–47655) should never be tunnelled.
 - The tools are read-only. Stop the process (Ctrl+C) or the tunnel and it's offline.
 - ChatGPT itself (OpenAI) sees whatever the tools return in your conversations.
 
-Options: `TAB_STATE_MCP_REMOTE_PORT` (default 8766), `TAB_STATE_MCP_TOKEN` (use your own token,
+Options: `TAB_STATE_MCP_REMOTE_PORT` (default 47660), `TAB_STATE_MCP_TOKEN` (use your own token,
 32+ characters). Clients that support a token header can use `Authorization: Bearer <token>` on
 `/mcp` instead of the token path.
 
@@ -123,9 +123,8 @@ npm run build:mcpb                  # -> dist/tab-state-mcp-<version>.mcpb
 ```
 
 Then in Claude Desktop: **Settings → Extensions → Install Extension**, pick the `.mcpb` file, done.
-It asks for one optional setting — the sync port (default 8765), which must match the port in the
-Tab State extension's **Settings → Connect your AI assistant** section (under "Advanced"). Then turn sharing on there (see
-[Connect it to Chrome](#connect-it-to-chrome)).
+It asks for one optional setting, the sync port — leave it empty: the server and the extension
+find each other automatically (see [Which port?](#which-port)).
 
 The bundle contains only the manifest, `server.mjs`/`store.mjs`, an icon and production
 dependencies — no tests or dev tooling.
@@ -140,16 +139,26 @@ npm start
 
 This starts two things in one process:
 
-- An HTTP listener on `http://127.0.0.1:8765` (`/sync`) that the extension posts your tracked tabs
-  to. Nothing but the Tab State extension, running in your own browser, should ever call this.
+- An HTTP listener on `127.0.0.1` (`/sync`, on the first free port of 47651–47655) that the
+  extension posts your tracked tabs to.
 - An MCP server connected over stdio, for a client (Claude Desktop, Claude Code, etc.) to talk to.
 
 Leave it running in a terminal, or let your MCP client launch it for you (see below). Your data is
 stored at `~/.tab-state-mcp/data.json`, created with `0600` permissions (owner read/write only) in
 a `0700` directory.
 
-Set `TAB_STATE_MCP_PORT` to use a different port than 8765 — and match it in the extension's
-**Settings → Connect your AI assistant** section (under "Advanced").
+### Which port?
+
+Not one fixed number — popular defaults collide (AnkiConnect, for example, listens on 8765, this
+server's old default). The server takes the first free port of **47651–47655** and writes it to
+`~/.tab-state-mcp/port`; if another Tab State copy already has one, it shares that copy's data.
+The extension finds it by asking each of those ports' `/health` for `"service": "tab-state"`
+(extensions can't read files, so a port file alone wouldn't work), then remembers the port. If all
+five are taken, the server still answers questions from the last synced data and keeps retrying.
+
+To pin one port instead: set `TAB_STATE_MCP_PORT` for the server *and* type the same number in the
+extension's Settings → Share your tabs → Advanced. (Chrome native messaging, which needs no port at
+all, is the planned long-term replacement.)
 
 ## Connect it to Chrome
 

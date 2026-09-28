@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import http from 'node:http';
-import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -128,4 +128,41 @@ test('the port taken by some other app: the server still starts and answers (it 
     child.kill();
     squatter.close();
   }
+});
+
+test('automatic port: skips a port another app holds, writes the port file, says who it is on /health', async () => {
+  const { SYNC_PORTS } = await import('../server.mjs');
+  const home = mkdtempSync(path.join(tmpdir(), 'ts-autoport-'));
+  const squatter = http.createServer((q, r) => { r.writeHead(200); r.end('AnkiConnect'); });
+  let squatted = null;
+  for (const p of SYNC_PORTS.slice(0, -1)) { // leave at least one candidate free
+    try { await new Promise((ok, bad) => { squatter.once('error', bad); squatter.listen(p, '127.0.0.1', ok); }); squatted = p; break; } catch { /* in use: try next */ }
+  }
+  assert.ok(squatted, 'could occupy a candidate port for the test');
+  const env = { ...process.env, HOME: home, USERPROFILE: home };
+  delete env.TAB_STATE_MCP_PORT;
+  const child = spawn('node', [path.join(MCP_DIR, '..', 'plugins/tab-state/server/tab-state-mcp.mjs')], { env, stdio: ['pipe', 'pipe', 'pipe'] });
+  let log = '';
+  child.stderr.on('data', (d) => { log += d; });
+  try {
+    const deadline = Date.now() + 5000;
+    while (!/listening on|sharing its data/.test(log) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 100));
+    const port = Number(/127\.0\.0\.1:(\d+)/.exec(log)?.[1] ?? /port (\d+)/.exec(log)?.[1]);
+    assert.ok(SYNC_PORTS.includes(port) && port !== squatted, `picked ${port} (log: ${log})`);
+    if (/listening on/.test(log)) {
+      assert.equal(readFileSync(path.join(home, '.tab-state-mcp', 'port'), 'utf8').trim(), String(port), 'port file for people/tools');
+    }
+    const health = await (await fetch(`http://127.0.0.1:${port}/health`)).json();
+    assert.equal(health.service, 'tab-state', 'identifies itself so the extension can find it');
+  } finally {
+    child.kill();
+    squatter.close();
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('the server\'s port list matches the one the extension probes (lib/mcp-sync.js)', async () => {
+  const { SYNC_PORTS } = await import('../server.mjs');
+  const { MCP_PORTS } = await import('../../lib/mcp-sync.js');
+  assert.deepEqual(SYNC_PORTS, MCP_PORTS, 'change both together, or the extension won\'t find the server');
 });

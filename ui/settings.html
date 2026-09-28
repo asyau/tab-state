@@ -154,7 +154,7 @@
           <details class="st-advanced">
             <summary>Advanced</summary>
             <div class="field-row">
-              <div class="field"><label for="mcp-port">Connection port <span class="muted">(8765 — change it only if another app already uses this number, and set the same one in your assistant)</span></label><input id="mcp-port" type="number" min="1" max="65535" step="1"></div>
+              <div class="field"><label for="mcp-port">Connection port <span class="muted">— leave blank: Tab State finds your assistant by itself. Only set a number if you also pinned it with <code>TAB_STATE_MCP_PORT</code>.</span></label><input id="mcp-port" type="number" min="1" max="65535" step="1" placeholder="Automatic"></div>
             </div>
           </details>
         </li>
@@ -196,7 +196,7 @@
               <summary>Build it yourself instead</summary>
               <p>From your copy of the repo (needs <code>npm install -g @anthropic-ai/mcpb</code> once):</p>
               <div class="st-cmd"><code>cd tab-state/mcp-server && npm install && npm run build:mcpb</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
-              <p>Then install <code>mcp-server/dist/tab-state-mcp-1.0.0.mcpb</code> as above. Or add this to <code>claude_desktop_config.json</code> (use your real path):</p>
+              <p>Then install <code>mcp-server/dist/tab-state-mcp-&lt;version&gt;.mcpb</code> as above. Or add this to <code>claude_desktop_config.json</code> (use your real path):</p>
               <div class="st-cmd"><code>"tab-state": {{ "command": "node", "args": ["/path/to/tab-state/plugins/tab-state/server/tab-state-mcp.mjs"] }}</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div>
             </details>
           </div>
@@ -205,7 +205,7 @@
             <p>ChatGPT can only reach servers on the internet, so this one takes a few more steps (developer mode on Plus, Pro, Business, Enterprise or Education, on the web):</p>
             <ol class="st-substeps">
               <li>Start remote mode: <div class="st-cmd"><code>cd tab-state/mcp-server && npm install && npm run remote</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div> It prints a private URL ending in <code>/mcp/&lt;token&gt;</code>.</li>
-              <li>Expose <b>only</b> that port over HTTPS, e.g. <div class="st-cmd"><code>cloudflared tunnel --url http://127.0.0.1:8766</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div></li>
+              <li>Expose <b>only</b> that port over HTTPS, e.g. <div class="st-cmd"><code>cloudflared tunnel --url http://127.0.0.1:47660</code><button class="st-copy" type="button" aria-label="Copy">Copy</button></div></li>
               <li>At <a href="https://chatgpt.com/plugins" target="_blank" rel="noopener">chatgpt.com/plugins</a>, create a developer-mode app with <code>https://&lt;your-tunnel&gt;/mcp/&lt;token&gt;</code> and <b>No Authentication</b>.</li>
             </ol>
             <p class="note warn">Anyone with that full URL can read your tracked tabs while the tunnel runs — treat it like a password. Only the read-only tools are exposed; sync is never reachable through it. <a href="https://github.com/asyau/tab-state/blob/main/mcp-server/README.md#chatgpt-remote-mode" target="_blank" rel="noopener">Security details</a></p>

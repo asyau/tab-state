@@ -1,9 +1,10 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { toSyncTab, buildSyncPayload, syncToMcpServer } from '../../lib/mcp-sync.js';
+import { toSyncTab, buildSyncPayload, syncToMcpServer, findMcpServer, resetMcpDiscovery, MCP_PORTS } from '../../lib/mcp-sync.js';
+import { mergeSettings } from '../../lib/settings.js';
 
 const realFetch = globalThis.fetch;
-afterEach(() => { globalThis.fetch = realFetch; });
+afterEach(() => { globalThis.fetch = realFetch; resetMcpDiscovery(); });
 
 const rec = (over = {}) => ({
   id: 'r1', url: 'https://docs.stripe.com/auth', title: 'Auth', description: 'API keys.',
@@ -59,4 +60,62 @@ test('syncToMcpServer never throws when the local server is unreachable', async 
   const out = await syncToMcpServer([rec()], 1000, undefined, { enabled: true, port: 8765 });
   assert.equal(out.sent, false);
   assert.match(out.error, /ECONNREFUSED/);
+});
+
+// --- Automatic port discovery ------------------------------------------------------------------
+// A fake "localhost": which ports answer /health with what, and a log of every request.
+function fakeLocalhost(ports) {
+  const log = [];
+  globalThis.fetch = async (url, init = {}) => {
+    const { port, pathname } = new URL(url);
+    log.push(`${init.method || 'GET'} ${port}${pathname}`);
+    const app = ports[port];
+    if (!app) throw new Error('ECONNREFUSED');
+    if (pathname === '/health') {
+      return { ok: true, status: 200, json: async () => { if (app === 'anki') throw new SyntaxError('not JSON'); return app; } };
+    }
+    return { ok: app?.service === 'tab-state' || app?.ok === true, status: 200 };
+  };
+  return log;
+}
+
+test('automatic: skips another app on the first port and syncs to the Tab State server it finds', async () => {
+  const log = fakeLocalhost({ [MCP_PORTS[0]]: 'anki', [MCP_PORTS[1]]: { ok: true, service: 'tab-state' } });
+  const out = await syncToMcpServer([rec()], 1000, undefined, { enabled: true, port: null });
+  assert.equal(out.sent, true);
+  assert.equal(out.port, MCP_PORTS[1]);
+  assert.ok(!log.some((l) => l === `POST ${MCP_PORTS[0]}/sync`), 'never sends tab data to the other app');
+});
+
+test('automatic: a lookalike {ok:true} on a candidate port is not trusted; on the old 8765 it is', async () => {
+  fakeLocalhost({ [MCP_PORTS[0]]: { ok: true } });
+  assert.equal(await findMcpServer(), null);
+  resetMcpDiscovery();
+  fakeLocalhost({ 8765: { ok: true } });
+  assert.equal(await findMcpServer(), 8765, 'servers installed before the change still work');
+});
+
+test('automatic: remembers the port (no re-probing each sync) and searches again if the server moved', async () => {
+  let log = fakeLocalhost({ [MCP_PORTS[2]]: { ok: true, service: 'tab-state' } });
+  await syncToMcpServer([rec()], 1000, undefined, { enabled: true });
+  log.length = 0;
+  await syncToMcpServer([rec()], 1000, undefined, { enabled: true });
+  assert.deepEqual(log, [`POST ${MCP_PORTS[2]}/sync`], 'straight to the known port');
+  log = fakeLocalhost({ [MCP_PORTS[0]]: { ok: true, service: 'tab-state' } }); // restarted elsewhere
+  const out = await syncToMcpServer([rec()], 1000, undefined, { enabled: true });
+  assert.equal(out.port, MCP_PORTS[0]);
+});
+
+test('automatic: nothing running is a quiet no-op with a helpful reason', async () => {
+  fakeLocalhost({});
+  const out = await syncToMcpServer([rec()], 1000, undefined, { enabled: true });
+  assert.equal(out.sent, false);
+  assert.match(out.error, /No Tab State server found/);
+});
+
+test('settings: the old saved default 8765 means automatic; a port the user chose is kept', () => {
+  assert.equal(mergeSettings({ mcpSync: { enabled: true, port: 8765 } }).mcpSync.port, null);
+  assert.equal(mergeSettings({ mcpSync: { enabled: true, port: 9000 } }).mcpSync.port, 9000);
+  assert.equal(mergeSettings({}).mcpSync.port, null);
+  assert.equal(mergeSettings({ mcpSync: { port: 'abc' } }).mcpSync.port, null);
 });

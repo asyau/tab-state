@@ -1,6 +1,6 @@
 {
   "name": "tab-state-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "Local MCP server exposing your Tab State reading history to Claude and other MCP clients. Runs entirely on your machine.",
